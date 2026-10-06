@@ -53,6 +53,7 @@
       .chart.map { height: min(72vh, 640px); }
       label.knob { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
       label.knob input { width: 110px; flex: none; min-width: 0; }
+      .crumbs { margin-top: 8px; font-weight: 600; color: var(--text); }
       label.knob input[type='color'] {
         width: 28px;
         height: 22px;
@@ -144,7 +145,12 @@
 
       <section>
         <h2>Region map</h2>
-        <p>Revenue by country, sample data. Regions rise by value; data joins on ISO codes or names.</p>
+        <p>
+          Revenue by country, sample data. Regions rise by value; data joins on ISO codes or names.
+          Click the United States to drill into states, then a state for its counties
+          (sample store locations, binned into counties by coordinates).
+        </p>
+        <p class="crumbs" id="regions-crumbs">World</p>
         <div class="card">
           <div class="stage"><div class="year" id="regions-year"></div><div class="chart map" id="regions"></div></div>
           <div class="controls" id="regions-controls"></div>
@@ -400,6 +406,71 @@ chart.setTheme('brand');</pre>
           'world',
           (v) => chart.reconfigure({ bounds: { world: undefined, europe: [-25, 34, 45, 71], asia: [60, -10, 150, 55] }[v] }),
         );
+        // ---- drill-down: World -> US states -> counties ----------------------
+        // us-atlas (ISC) is fetched only when needed; the library ships no US data.
+        let usAtlas;
+        const loadUS = () =>
+          (usAtlas ??= fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json').then((r) => r.json()));
+        const rnd = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+        // [west, south, east, north] of a GeoJSON feature, padded.
+        const boundsOf = (geometry, pad = 0.6) => {
+          const pts = (geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates).flat(2);
+          const lons = pts.map((p) => p[0]);
+          const lats = pts.map((p) => p[1]);
+          return [Math.min(...lons) - pad, Math.min(...lats) - pad, Math.max(...lons) + pad, Math.max(...lats) + pad];
+        };
+        const trail = ['World'];
+        const back = button('Back', () => chart.drillUp());
+        back.style.display = 'none';
+        host.prepend(back);
+        chart.on('drill', ({ depth }) => {
+          trail.length = depth + 1;
+          $('regions-crumbs').textContent = trail.join('  ›  ');
+          back.style.display = depth ? '' : 'none';
+          $('regions-year').textContent = chart.frameLabel ?? '';
+        });
+
+        chart.on('click', async (region) => {
+          if (chart.depth === 0 && region.id === 'USA') {
+            const us = await loadUS();
+            const r = rnd(17);
+            // State totals keyed by name.
+            const data = us.objects.states.geometries.map((g) => ({ state: g.properties.name, revenue: 2 + r() * r() * 60 }));
+            trail.push('United States');
+            chart.drill(us, {
+              object: 'states',
+              bounds: [-125, 24, -66.5, 49.6],
+              key: 'state',
+              data,
+              labels: 6,
+              format: (v) => `$${v.toFixed(1)}M`,
+            });
+          } else if (chart.depth === 1 && region.feature) {
+            const us = await loadUS();
+            const fips = String(region.id);
+            const bounds = boundsOf(region.feature.geometry);
+            // Synthetic store locations: clustered points inside the state's
+            // box, with no county field. The map assigns each to its county.
+            const r = rnd(fips.charCodeAt(0) * 31 + fips.charCodeAt(1));
+            const [w, sth, e, n] = bounds;
+            const hubs = Array.from({ length: 6 }, () => [w + r() * (e - w), sth + r() * (n - sth)]);
+            const data = Array.from({ length: 900 }, () => {
+              const [hx, hy] = hubs[Math.floor(r() * hubs.length)];
+              return { lon: hx + (r() - 0.5) * (e - w) * 0.35, lat: hy + (r() - 0.5) * (n - sth) * 0.35, revenue: 1 + r() * 4 };
+            });
+            trail.push(region.name);
+            chart.drill(us, {
+              object: 'counties',
+              filter: (f) => String(f.id).startsWith(fips),
+              bounds,
+              lon: 'lon',
+              lat: 'lat',
+              data,
+              labels: 4,
+              format: (v) => `$${v.toFixed(0)}k`,
+            });
+          }
+        });
         window.regions = chart;
       }
 

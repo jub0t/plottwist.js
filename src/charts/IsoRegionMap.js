@@ -1,32 +1,94 @@
-// Regions (countries, provinces, states, sales territories...) from GeoJSON,
-// extruded by value: a 3D choropleth. Regions without data form a flat base
-// map; regions with data rise as solids coloured on a sequential scale.
+// Regions at any level (countries, states, provinces, counties, districts,
+// sales territories...) from GeoJSON or TopoJSON, extruded by value: a 3D
+// choropleth. Regions without data form a flat base map; regions with data
+// rise as solids coloured on a sequential scale.
 //
 //   import { worldCountries } from 'plottwist/geo/countries';
 //   new IsoRegionMap(el, { regions: worldCountries(), data, key: 'country', value: 'gdp' });
+//   new IsoRegionMap(el, { regions: usAtlas, object: 'counties', data: stores, lon: 'lng', lat: 'lat' });
 //
-// Data joins on the feature id or any of `joinOn` properties (by default
-// name, iso2, iso3, isoNumeric), case-insensitively, so 'DE', 'DEU', '276'
-// and 'Germany' all find the same region.
+// Records join to regions by `key`, matched case-insensitively against the
+// feature id and the `joinOn` properties (by default name, iso2, iso3,
+// isoNumeric: 'DE', 'DEU', '276' and 'Germany' all find Germany). Or give
+// `lon` / `lat` instead, and each record lands in the region containing it.
+// drill() / drillUp() move between levels.
 
 import { GeoChart, accessor } from '../core/geo-chart.js';
 import { parseHex, shade } from '../core/color.js';
 import { faceBrightness } from '../core/shapes.js';
+import { topojsonFeatures } from '../geo/topojson.js';
 
 const LIFT = 0.25;
 const JOIN_ON = ['name', 'iso2', 'iso3', 'isoNumeric'];
+const INDEX = 48; // spatial index resolution (cells per side)
+// Options that describe a level, saved and restored by drill() / drillUp().
+const LEVEL_KEYS = [
+  'regions', 'object', 'bounds', 'key', 'lon', 'lat', 'joinOn', 'regionId', 'regionName',
+  'filter', 'exclude', 'labels', 'callouts', 'arcs', 'value', 'format', 'valueLabel', 'aggregate',
+];
 
 export class IsoRegionMap extends GeoChart {
   constructor(container, options = {}) {
     super(container, options);
-    if (!this.options.regions?.features) {
-      throw new Error('plottwist: IsoRegionMap needs `regions`, a GeoJSON FeatureCollection');
-    }
-    this.key = accessor(this.options.key ?? 'id');
     this.heightRatio = 0.055;
-    this.layoutKeys = ['regions', 'bounds', 'exclude', 'simplify', 'detail'];
-    this.unmatched = new Set();
+    this.layoutKeys = ['bounds', 'exclude', 'simplify', 'detail', ...LEVEL_KEYS];
+    this._levels = [];
+    this.configure(this.options);
     this.init();
+  }
+
+  configure(options) {
+    const o = this.options;
+    if (!o.regions || !(o.regions.features || o.regions.type === 'Topology')) {
+      throw new Error('plottwist: IsoRegionMap needs `regions`: GeoJSON FeatureCollection or TopoJSON');
+    }
+    // Records find their region by key, or by coordinates when lon/lat are
+    // given without a key.
+    this.byPoint = o.key == null && o.lon != null && o.lat != null;
+    this.key = accessor(o.key ?? 'id');
+    this.lon = accessor(o.lon ?? 'lon');
+    this.lat = accessor(o.lat ?? 'lat');
+  }
+
+  // The regions as GeoJSON features (TopoJSON is converted; `object` names
+  // the layer, e.g. 'states').
+  _features() {
+    const r = this.options.regions;
+    return r.type === 'Topology' ? topojsonFeatures(r, this.options.object).features : r.features;
+  }
+
+  // ---- levels ---------------------------------------------------------------
+
+  // Go one level deeper: show `regions` (GeoJSON or TopoJSON) with new data.
+  // `options` may set data or frames and any level option (bounds, key,
+  // object, regionName, ...). drillUp() restores the previous level.
+  drill(regions, { data, frames, ...options } = {}) {
+    const level = Object.fromEntries(LEVEL_KEYS.map((k) => [k, this.options[k]]));
+    this._levels.push({ level, frames: this._rawFrames, position: this.timeline.position });
+    // A new level starts from a clean slate, except how values are read and shown.
+    const inherit = new Set(['regions', 'value', 'format', 'valueLabel', 'aggregate']);
+    for (const k of LEVEL_KEYS) if (!(k in options) && !inherit.has(k)) delete this.options[k];
+    this._rawFrames = frames ?? [{ label: null, data: data ?? [] }];
+    this._setHover(null);
+    this.reconfigure({ ...options, regions });
+    this.emit('drill', { depth: this.depth, regions: this.regions });
+  }
+
+  // Back to the previous level; returns false at the top.
+  drillUp() {
+    const prev = this._levels.pop();
+    if (!prev) return false;
+    this._rawFrames = prev.frames;
+    this._setHover(null);
+    this.reconfigure(prev.level);
+    this.seek(prev.position);
+    this.emit('drill', { depth: this.depth, regions: this.regions });
+    return true;
+  }
+
+  // How many levels below the first we are.
+  get depth() {
+    return this._levels.length;
   }
 
   // ---- geometry ---------------------------------------------------------------
@@ -37,8 +99,13 @@ export class IsoRegionMap extends GeoChart {
     const bounds = o.bounds; // [west, south, east, north] crop, optional
     const polygonsOf = (g) => (g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : []);
 
-    const features = o.regions.features.filter((f, i) => {
-      if (!f.geometry || exclude.has(String(f.id ?? f.properties?.name ?? i))) return false;
+    // regionId / regionName: how to identify and label a feature; filter:
+    // which features to draw at all.
+    const idOf = o.regionId ?? ((f, i) => f.id ?? f.properties?.id ?? f.properties?.name ?? i);
+    const nameOf = o.regionName ?? ((f, id) => f.properties?.name ?? f.properties?.NAME ?? id);
+    const features = this._features().filter((f, i) => {
+      if (!f.geometry || exclude.has(String(idOf(f, i)))) return false;
+      if (o.filter && !o.filter(f)) return false;
       if (!bounds) return true;
       const [w, s, e, n] = bounds;
       return polygonsOf(f.geometry).some((p) => p[0].some(([lon, lat]) => lon >= w && lon <= e && lat >= s && lat <= n));
@@ -62,9 +129,10 @@ export class IsoRegionMap extends GeoChart {
 
     this.regions = new Map();
     this.aliases = new Map();
+    this.unmatched = new Set();
     const joinOn = o.joinOn ?? JOIN_ON;
     features.forEach((f, index) => {
-      const id = String(f.id ?? f.properties?.name ?? index);
+      const id = String(idOf(f, index));
       const polys = polygonsOf(f.geometry)
         .map((poly) =>
           poly
@@ -80,7 +148,7 @@ export class IsoRegionMap extends GeoChart {
       // Anchor at the centroid of the largest outer ring, so overseas
       // territories don't drag a label into the ocean.
       const main = polys.map((p) => p[0]).reduce((a, b) => (Math.abs(b.area) > Math.abs(a.area) ? b : a));
-      const region = { id, name: f.properties?.name ?? id, feature: f, polys, x: main.cx, y: main.cy };
+      const region = { id, name: String(nameOf(f, id)), feature: f, polys, x: main.cx, y: main.cy };
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       for (const p of polys) {
         for (const [x, y] of p[0].pts) {
@@ -99,6 +167,7 @@ export class IsoRegionMap extends GeoChart {
         if (v != null && v !== '') this.aliases.set(String(v).toLowerCase(), id);
       }
     });
+    this._buildIndex();
   }
 
   // Project and simplify a ring; compute its area, centroid and the outward
@@ -149,12 +218,40 @@ export class IsoRegionMap extends GeoChart {
     return { pts, normals, smooth, area, cx, cy, hole };
   }
 
+  // A coarse grid over the map listing the regions whose bounding boxes
+  // touch each cell, so point lookups test a handful of regions, not all.
+  _buildIndex() {
+    const w = this.mapWidth || 1;
+    const d = this.mapDepth || 1;
+    this._index = { cells: new Map(), w, d };
+    const cell = (x, y) => [
+      Math.max(0, Math.min(INDEX - 1, Math.floor((x / w + 0.5) * INDEX))),
+      Math.max(0, Math.min(INDEX - 1, Math.floor((y / d + 0.5) * INDEX))),
+    ];
+    for (const r of this.regions.values()) {
+      const [x0, y0] = cell(r.bbox[0], r.bbox[1]);
+      const [x1, y1] = cell(r.bbox[2], r.bbox[3]);
+      for (let i = x0; i <= x1; i++) {
+        for (let j = y0; j <= y1; j++) {
+          const k = j * INDEX + i;
+          (this._index.cells.get(k) ?? this._index.cells.set(k, []).get(k)).push(r);
+        }
+      }
+    }
+  }
+
   // Region id for a key ('DEU', 'de', 'Germany', 276 ...), or undefined.
   resolve(key) {
     return key == null ? undefined : this.aliases.get(String(key).toLowerCase());
   }
 
   binKey(d) {
+    if (this.byPoint) {
+      const lon = +this.lon(d);
+      const lat = +this.lat(d);
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+      return this.regionAtWorld(...this.toWorld(lon, lat))?.id ?? null;
+    }
     const k = this.key(d);
     const id = this.resolve(k);
     if (id == null && k != null && !this.unmatched.has(k)) {
@@ -170,7 +267,7 @@ export class IsoRegionMap extends GeoChart {
 
   createItem(id) {
     const r = this.regions.get(id);
-    return { id, name: r.name, x: r.x, y: r.y, region: r };
+    return { id, name: r.name, x: r.x, y: r.y, feature: r.feature, region: r };
   }
 
   // An item or bare region for a key: lets arcs and callouts name regions.
@@ -181,7 +278,11 @@ export class IsoRegionMap extends GeoChart {
 
   // The region under a world point.
   regionAtWorld(x, y) {
-    for (const r of this.regions.values()) {
+    const { cells, w, d } = this._index;
+    const i = Math.floor((x / w + 0.5) * INDEX);
+    const j = Math.floor((y / d + 0.5) * INDEX);
+    if (i < 0 || j < 0 || i >= INDEX || j >= INDEX) return null;
+    for (const r of cells.get(j * INDEX + i) ?? []) {
       const [x0, y0, x1, y1] = r.bbox;
       if (x < x0 || x > x1 || y < y0 || y > y1) continue;
       for (const poly of r.polys) {

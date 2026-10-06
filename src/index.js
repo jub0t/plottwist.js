@@ -11,3 +11,4 @@ export { Camera, ISO_YAW, ISO_PITCH } from './core/camera.js';
 export { Tween, Timeline, ease } from './core/animation.js';
 export { themes, scales, registerTheme, resolveTheme } from './core/color.js';
 export { projections, isLand } from './geo/index.js';
+export { topojsonFeatures } from './geo/topojson.js';

@@ -80,6 +80,8 @@ export interface ChartEvents<H> {
   frame: { position: number; playing: boolean };
   play: undefined;
   pause: undefined;
+  /** IsoRegionMap: after drill() / drillUp(). */
+  drill: { depth: number };
 }
 
 export interface ChartOptions {
@@ -417,11 +419,29 @@ export interface Region extends GeoItem {
   readonly feature: GeoJSONFeature;
 }
 
+export interface TopoJSONTopology {
+  type: 'Topology';
+  objects: Record<string, unknown>;
+  arcs: number[][][];
+  transform?: { scale: [number, number]; translate: [number, number] };
+}
+
 export interface IsoRegionMapOptions<D> extends GeoChartOptions<D> {
-  /** The regions to draw. */
-  regions: GeoJSONFeatureCollection;
+  /** The regions to draw, at any level: GeoJSON, or TopoJSON with `object`. */
+  regions: GeoJSONFeatureCollection | TopoJSONTopology;
+  /** The TopoJSON object to use (e.g. 'states', 'counties'). Default: the first. */
+  object?: string;
   /** Field naming each record's region; matches feature ids or `joinOn` properties. */
   key?: Accessor<D, string | number>;
+  /** Without `key`: place each record in the region containing this coordinate. */
+  lon?: Accessor<D, number>;
+  lat?: Accessor<D, number>;
+  /** A feature's id. Default: feature.id, then properties.id, then properties.name. */
+  regionId?: (feature: GeoJSONFeature, index: number) => string | number;
+  /** A feature's display name. Default: properties.name, then NAME, then the id. */
+  regionName?: (feature: GeoJSONFeature, id: string) => string;
+  /** Which features to draw. */
+  filter?: (feature: GeoJSONFeature) => boolean;
   /** Feature properties data can join on. Default name, iso2, iso3, isoNumeric. */
   joinOn?: string[];
   /** Feature ids to leave out. Default ['ATA']. */
@@ -453,6 +473,15 @@ export declare class IsoRegionMap<D = any> extends GeoChart<D, Region> {
   readonly unmatched: Set<unknown>;
   /** Region id for a key ('DE', 'DEU', 'Germany', 276), if any. */
   resolve(key: unknown): string | undefined;
+  /** How many levels below the first we are. */
+  readonly depth: number;
+  /** Show deeper regions (with new data and level options); drillUp() returns. */
+  drill(
+    regions: GeoJSONFeatureCollection | TopoJSONTopology,
+    options?: Partial<IsoRegionMapOptions<any>> & { data?: unknown[]; frames?: Frame<any>[] },
+  ): void;
+  /** Back to the previous level; false at the top. */
+  drillUp(): boolean;
   /** The region at a coordinate. */
   regionAt(lon: number, lat: number): Region | null;
   reconfigure(options: Partial<IsoRegionMapOptions<D>>): void;
@@ -513,3 +542,5 @@ export declare function resolveTheme(theme?: ThemeInput): Theme;
 export declare const projections: Record<ProjectionName, Projection>;
 /** Whether a coordinate is land (0.5 degree resolution). */
 export declare function isLand(lon: number, lat: number): boolean;
+/** Polygon features of a TopoJSON object as GeoJSON (ids and properties kept). */
+export declare function topojsonFeatures(topology: TopoJSONTopology, object?: string): GeoJSONFeatureCollection;

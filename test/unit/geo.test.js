@@ -61,3 +61,46 @@ test('world countries decode to valid GeoJSON with ISO codes', () => {
   assert.deepEqual(fra.properties, { name: 'France', iso2: 'FR', iso3: 'FRA', isoNumeric: '250' });
   assert.equal(worldCountries(), fc, 'decoded once and cached');
 });
+
+test('topojsonFeatures converts quantized and plain topologies', async () => {
+  const { topojsonFeatures } = await import('../../src/geo/topojson.js');
+  // Two unit squares sharing an edge (arc 1), quantized with a transform.
+  const quantized = {
+    type: 'Topology',
+    transform: { scale: [0.5, 0.5], translate: [10, 20] },
+    arcs: [
+      [[0, 0], [2, 0]], // (10,20)->(11,20)
+      [[2, 0], [0, 2]], // shared edge (11,20)->(11,21)
+      [[2, 2], [-2, 0], [0, -2]], // (11,21)->(10,21)->(10,20)
+      [[2, 0], [2, 0], [0, 2], [-2, 0]], // (11,20)->(12,20)->(12,21)->(11,21)
+    ],
+    objects: {
+      shapes: {
+        type: 'GeometryCollection',
+        geometries: [
+          { type: 'Polygon', id: 'A', properties: { name: 'Left' }, arcs: [[0, 1, 2]] },
+          { type: 'MultiPolygon', id: 'B', arcs: [[[3, ~1]]] },
+          { type: 'Point', coordinates: [0, 0] },
+        ],
+      },
+    },
+  };
+  const fc = topojsonFeatures(quantized);
+  assert.equal(fc.features.length, 2, 'points are skipped');
+  const [a, b] = fc.features;
+  assert.equal(a.id, 'A');
+  assert.deepEqual(a.properties, { name: 'Left' });
+  assert.deepEqual(a.geometry.coordinates[0], [[10, 20], [11, 20], [11, 21], [10, 21], [10, 20]]);
+  assert.equal(b.geometry.type, 'MultiPolygon');
+  assert.deepEqual(b.geometry.coordinates[0][0], [[11, 20], [12, 20], [12, 21], [11, 21], [11, 20]]);
+
+  // Without a transform, arcs are absolute coordinates.
+  const plain = {
+    type: 'Topology',
+    arcs: [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+    objects: { tri: { type: 'Polygon', arcs: [[0]] } },
+  };
+  assert.deepEqual(topojsonFeatures(plain, 'tri').features[0].geometry.coordinates[0], [[0, 0], [1, 0], [1, 1], [0, 0]]);
+  assert.throws(() => topojsonFeatures(plain, 'nope'), /has no object "nope"/);
+  assert.throws(() => topojsonFeatures({ type: 'FeatureCollection' }), /not a TopoJSON/);
+});

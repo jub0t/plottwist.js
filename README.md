@@ -49,8 +49,8 @@ TypeScript types are included; charts are generic over your record type, so acce
 - `IsoHeatmap`: extruded tiles on a sequential scale, e.g. a contribution calendar
 - `IsoRibbonChart`: one extruded ribbon per series, x along the floor
 - `IsoHexMap`: rounded hexagons over the world (or `bounds`), data binned by exact coordinates; arcs and callouts
-- `IsoRegionMap`: any GeoJSON regions extruded by value (a 3D choropleth); built-in world countries via
-  `import { worldCountries } from 'plottwist/geo/countries'`, joining data on ISO codes or names
+- `IsoRegionMap`: regions at any level (countries, states, provinces, counties, districts, territories)
+  extruded by value, a 3D choropleth. See below.
 
 Grid charts get a value axis on back walls that follow the camera (`axis: false` to hide), a dashed
 level line from the hovered mark to the axis, value labels (`labels: true | N`) and a reference
@@ -58,6 +58,35 @@ plane (`reference: { value, label }`) that bars rise through.
 
 All charts support `frames` + `play()/pause()/seek()`, view presets (`setView('iso' | 'top' | 'front')`),
 orbit/zoom, hover tooltips and `on('hover' | 'click' | 'frame')`.
+
+## Region maps at any level
+
+`IsoRegionMap` draws whatever regions you give it, as GeoJSON or TopoJSON:
+
+```js
+import { IsoRegionMap } from 'plottwist';
+import { worldCountries } from 'plottwist/geo/countries'; // or 'plottwist/geo/countries-50m' (crisper)
+
+// Countries, joined on ISO codes or names ('DE', 'DEU', '276' and 'Germany' all match).
+const map = new IsoRegionMap(el, { regions: worldCountries(), data, key: 'country', value: 'gdp' });
+
+// Your own boundaries: provinces, counties, districts, sales territories...
+new IsoRegionMap(el, {
+  regions: usAtlas,              // TopoJSON works directly
+  object: 'counties',            // which layer
+  filter: (f) => f.id.startsWith('06'),
+  regionName: (f) => f.properties.NAME_2,
+  lon: 'lng', lat: 'lat',        // no region key? records land in the region containing them
+  data: stores,
+});
+
+// Drill between levels; drillUp() goes back.
+map.on('click', (region) => map.drill(statesOf(region), { key: 'state', data: stateData }));
+```
+
+`bounds` crops (and clips) to a box, `detail` trades shape detail for speed, and `borderWidth`,
+`borderColor`, `edgeWidth` and `edgeColor` style the strokes. `topojsonFeatures(topology, object)`
+converts TopoJSON for other uses.
 
 ## Theming
 

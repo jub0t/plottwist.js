@@ -108,8 +108,14 @@ export class GeoChart extends Chart {
     Object.assign(this.options, options);
     if ('projection' in options) this.projection = resolveProjection(options.projection);
     if ('extrude' in options) this.extrude = options.extrude;
+    if ('value' in options) this.value = accessor(options.value ?? 'value');
+    if ('format' in options && options.format) this.format = options.format;
+    if ('aggregate' in options) {
+      const a = options.aggregate ?? 'sum';
+      this.aggregate = typeof a === 'function' ? a : AGGREGATES[a];
+    }
     this.configure?.(options);
-    if (['projection', ...(this.layoutKeys ?? [])].some((k) => k in options)) {
+    if (['projection', 'value', 'aggregate', ...(this.layoutKeys ?? [])].some((k) => k in options)) {
       this.layout();
       this.items.clear();
       this._fit = null;

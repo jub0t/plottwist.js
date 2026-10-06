@@ -1,6 +1,6 @@
 // Compile-only check that the public types describe real usage.
 // Run with: npm run test:types
-import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, registerTheme, scales, type Frame } from 'plottwist';
+import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
 import { worldCountries } from 'plottwist/geo/countries';
 
 interface Row {
@@ -52,6 +52,21 @@ const regions = new IsoRegionMap<{ country: string; gdp: number }>('#regions', {
   bounds: [-25, 34, 45, 71],
 });
 regions.resolve('DE');
+declare const usAtlas: TopoJSONTopology;
+regions.drill(usAtlas, { object: 'states', key: 'state', data: [], bounds: [-125, 24, -66, 50] });
+regions.on('drill', ({ depth }) => depth);
+regions.drillUp();
+const stores = new IsoRegionMap<{ lng: number; lat: number; sales: number }>('#stores', {
+  regions: usAtlas,
+  object: 'counties',
+  lon: 'lng',
+  lat: 'lat',
+  value: 'sales',
+  filter: (f) => String(f.id).startsWith('06'),
+  regionName: (f, id) => String(f.properties?.name ?? id),
+});
+topojsonFeatures(usAtlas, 'states').features.length;
+stores.depth;
 regions.on('click', (r) => r.feature.id);
 
 const race = new IsoRaceChart<{ name: string; users: number; genre: string }>('#race', {
