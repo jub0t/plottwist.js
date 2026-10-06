@@ -56,6 +56,17 @@ TypeScript types are included; charts are generic over your record type, so acce
 - `IsoHexMap`: rounded hexagons over the world (or `bounds`), data binned by exact coordinates; arcs and callouts
 - `IsoRegionMap`: regions at any level (countries, states, provinces, counties, districts, territories)
   extruded by value, a 3D choropleth. See below.
+- `IsoSurface`: a lit terrain over a grid of values, with contours. Styles include smooth or topo
+  bands, wireframe, a `water` level that floods the lows, a `float`ing model over its own map, and
+  labelled `peaks`
+- `IsoWaffleChart`: a stack of cubes per category, one per `unit`; between frames, cubes fly from
+  shrinking stacks to growing ones
+- `IsoTankChart`: values as liquid in glass tanks with `capacity` and `target`; changes pour in,
+  overshoot and slosh, and tanks below target change colour
+- `IsoHelixChart`: a time series coiled one turn per year (or week, or day), so the same point in
+  every cycle lines up vertically; hovering compares with the cycle below
+- `IsoGaltonChart`: a histogram that builds itself, one ball per record falling through pegs into
+  its bin
 
 Grid charts get a value axis on back walls that follow the camera (`axis: false` to hide), a dashed
 level line from the hovered mark to the axis, value labels (`labels: true | N`) and a reference
