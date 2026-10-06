@@ -40,7 +40,9 @@
         const el = Object.assign(document.createElement('div'), { className: 'tile' });
         Object.assign(el.style, { left: `${x}px`, top: `${top}px`, width: `${w}px`, height: `${h}px` });
         document.body.append(el);
-        return demos[id].create(el, { theme: 'midnight' }).chart;
+        // The README preview leaves out the map's arcs.
+        const extra = id === 'map' ? { arcs: null } : {};
+        return demos[id].create(el, { theme: 'midnight', ...extra }).chart;
       });
 
       // Advance every chart to the end of its timeline with all entrance
