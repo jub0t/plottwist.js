@@ -35,7 +35,8 @@
 
       // Timeline position to show, when not the last frame. Tanks: September,
       // when two reservoirs are below their safe minimum (amber) and four aren't.
-      const showAt = { tanks: 3 };
+      // Balance: Q3, when actual spend runs visibly over budget.
+      const showAt = { tanks: 3, balance: 2 };
 
       const W = 1200;
       const PAD = 8;
@@ -66,6 +67,8 @@
       );
       y += LABEL + 340 + GAP;
       layout.push(['tanks', PAD, y + LABEL, half, 300], ['waffle', PAD + half + GAP, y + LABEL, half, 300]);
+      y += LABEL + 300 + GAP;
+      layout.push(['balance', PAD, y + LABEL, half, 300], ['iceberg', PAD + half + GAP, y + LABEL, half, 300]);
       y += LABEL + 300;
       const H = y + PAD;
 

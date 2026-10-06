@@ -8,6 +8,7 @@ export { IsoHelixChart } from './charts/IsoHelixChart.js';
 export { IsoTankChart } from './charts/IsoTankChart.js';
 export { IsoGaltonChart } from './charts/IsoGaltonChart.js';
 export { IsoBalanceChart } from './charts/IsoBalanceChart.js';
+export { IsoIcebergChart } from './charts/IsoIcebergChart.js';
 export { IsoHexMap } from './charts/IsoHexMap.js';
 export { IsoRegionMap } from './charts/IsoRegionMap.js';
 export { Chart, VIEWS } from './core/chart.js';

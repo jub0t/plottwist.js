@@ -5,7 +5,7 @@
 // { chart, shuffle } where shuffle() swaps in a fresh random dataset.
 
 import {
-  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart, IsoGaltonChart, IsoBalanceChart,
+  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart, IsoGaltonChart, IsoBalanceChart, IsoIcebergChart,
 } from '../src/index.js';
 import { worldCountries } from '../src/geo/countries.js';
 
@@ -365,6 +365,29 @@ function budgetActual(seed) {
   });
 }
 
+// ---- customer issues (iceberg) ---------------------------------------------------------
+
+// Customer problems by product area per quarter: reported tickets above the
+// waterline, estimated unreported ones below. An in-app feedback button
+// launches in Q2, so more of each berg surfaces.
+const AREAS = [['Checkout', 900], ['Billing', 520], ['Search', 640], ['Mobile app', 1100], ['Shipping', 760]];
+
+function customerIssues(seed) {
+  const r = rng(seed);
+  const reportRate = AREAS.map(() => 0.08 + r() * 0.1);
+  return ['Q1', 'Q2', 'Q3', 'Q4'].map((label, t) => {
+    const lift = [1, 1.8, 2.6, 3.1][t];
+    return {
+      label,
+      data: AREAS.map(([area, problems], k) => {
+        const total = problems * (1 - t * 0.06) * (0.92 + r() * 0.16);
+        const reported = total * Math.min(0.6, reportRate[k] * lift);
+        return { area, reported, unreported: total - reported };
+      }),
+    };
+  });
+}
+
 // ---- demos ------------------------------------------------------------------------
 
 // Builds a demo: `make(seed)` produces data, `build(el, data, extra)` the chart.
@@ -534,6 +557,23 @@ export const demos = {
         value: 'k',
         format: (v) => `$${v.toFixed(0)}k`,
         ariaLabel: 'Balance scale of budget against actual spend by department, by quarter',
+        ...extra,
+      }),
+    ),
+  },
+  iceberg: {
+    title: 'Icebergs',
+    type: 'IsoIcebergChart',
+    create: demo(16, 6271, customerIssues, (el, frames, extra) =>
+      new IsoIcebergChart(el, {
+        frames,
+        key: 'area',
+        above: 'reported',
+        below: 'unreported',
+        aboveLabel: 'Reported',
+        belowLabel: 'Unreported (est.)',
+        format: (v) => `${Math.round(v)}`,
+        ariaLabel: 'Icebergs of reported against estimated unreported customer issues by product area',
         ...extra,
       }),
     ),

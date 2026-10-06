@@ -213,6 +213,15 @@
       </section>
 
       <section>
+        <h2>Icebergs</h2>
+        <p>Customer problems by product area, sample data: reported tickets above the waterline, estimated unreported ones below. An in-app feedback button launches in Q2, and more of each berg surfaces.</p>
+        <div class="card">
+          <div class="stage"><div class="year" id="iceberg-year"></div><div class="chart" id="iceberg"></div></div>
+          <div class="controls" id="iceberg-controls"></div>
+        </div>
+      </section>
+
+      <section>
         <h2>Terrain surface</h2>
         <p>Wi-Fi signal quality across a 36 × 24 m office floor through the day, sample data. Contour lines follow the value axis; hover to probe a point.</p>
         <div class="card">
@@ -528,7 +537,7 @@ chart.setTheme('brand');</pre>
         window.regions = chart;
       }
 
-      for (const id of ['race', 'waffle', 'tanks', 'balance', 'bars', 'stack']) {
+      for (const id of ['race', 'waffle', 'tanks', 'balance', 'iceberg', 'bars', 'stack']) {
         const { chart, shuffle } = create(id);
         const host = $(`${id}-controls`);
         player(chart, host, $(`${id}-year`));

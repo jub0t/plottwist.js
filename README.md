@@ -68,6 +68,10 @@ TypeScript types are included; charts are generic over your record type, so acce
   every cycle lines up vertically; hovering compares with the cycle below
 - `IsoGaltonChart`: a histogram that builds itself, one ball per record falling through pegs into
   its bin
+- `IsoBalanceChart`: two sides on a balance scale, items stacked on each pan; the beam leans toward
+  the heavier side by the relative difference and rocks when the data changes
+- `IsoIcebergChart`: what's seen and what's hidden, as icebergs split at the waterline with heights
+  to scale; bergs rise, sink and bob as the share changes
 
 Grid charts get a value axis on back walls that follow the camera (`axis: false` to hide), a dashed
 level line from the hovered mark to the axis, value labels (`labels: true | N`) and a reference

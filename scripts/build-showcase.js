@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { launch, root, serve } from './lib/chrome.js';
 
 const server = await serve();
-const chrome = await launch({ width: 1200, height: 2200, scale: 2 });
+const chrome = await launch({ width: 1200, height: 2600, scale: 2 });
 try {
   await chrome.open(`${server.url}/examples/showcase.html`, 'window.compose');
   const url = await chrome.evaluate('window.compose()');

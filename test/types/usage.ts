@@ -1,6 +1,6 @@
 // Compile-only check that the public types describe real usage.
 // Run with: npm run test:types
-import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart, IsoGaltonChart, IsoBalanceChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
+import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart, IsoGaltonChart, IsoBalanceChart, IsoIcebergChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
 import { worldCountries } from 'plottwist/geo/countries';
 
 interface Row {
@@ -125,3 +125,7 @@ terrain.reconfigure({ haze: 0.5, occlusion: 0.4, contourStyle: 'illuminated', co
 const scale = new IsoBalanceChart<{ side: string; dept: string; k: number }>('#b', { data: [], key: 'dept', value: 'k', sensitivity: 4 });
 scale.on('hover', (h) => (h?.kind === 'item' ? h.key : h?.index));
 export { scale };
+
+const bergs = new IsoIcebergChart<{ area: string; seen: number; hidden: number }>('#i', { data: [], key: 'area', above: 'seen', below: 'hidden' });
+bergs.on('hover', (b) => b?.values[1]);
+export { bergs };

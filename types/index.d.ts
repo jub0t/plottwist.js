@@ -615,6 +615,46 @@ export declare class IsoBalanceChart<D = any> extends Chart<BalanceSide | Balanc
   setFrames(frames: Frame<D>[]): void;
 }
 
+// ---- icebergs ---------------------------------------------------------------------------
+
+export interface Iceberg {
+  readonly key: string | number;
+  readonly index: number;
+  /** Current (interpolated) [above, below] values. */
+  readonly values: [number, number];
+}
+
+export interface IsoIcebergChartOptions<D> extends ChartOptions {
+  data?: D[];
+  frames?: Frame<D>[];
+  /** Category of each record. Default 'name'. */
+  key?: Accessor<D, string | number>;
+  /** What shows above the waterline. Default 'above'. */
+  above?: Accessor<D, number>;
+  /** What's hidden below it. Default 'below'. */
+  below?: Accessor<D, number>;
+  aboveLabel?: string;
+  belowLabel?: string;
+  waterColor?: string;
+  iceColor?: string;
+  /** Berg radius, world units. Default 1.1. */
+  radius?: number;
+  perRow?: number;
+  /** Fixed scale for berg heights. Default: the largest total seen. */
+  max?: number;
+  format?: (value: number) => string;
+}
+
+/** What's seen and what's hidden: icebergs split at the waterline, heights to scale. */
+export declare class IsoIcebergChart<D = any> extends Chart<Iceberg> {
+  constructor(container: HTMLElement | string, options?: IsoIcebergChartOptions<D>);
+  readonly options: IsoIcebergChartOptions<D>;
+  readonly frameLabel: string | number | null;
+  readonly bergs: Iceberg[];
+  setData(data: D[]): void;
+  setFrames(frames: Frame<D>[]): void;
+}
+
 // ---- maps ---------------------------------------------------------------------
 
 export type LonLat = [lon: number, lat: number];
