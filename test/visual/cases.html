@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>plottwist visual cases</title>
+    <style>
+      body { margin: 0; background: #07070b; }
+      .case { position: absolute; left: 0; top: 0; width: 640px; height: 420px; }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      // Visual regression cases, driven by test/visual/run.js. Each case
+      // builds a demo chart, settles it deterministically, optionally hovers
+      // or moves the camera, and exposes its pixels for comparison.
+      import { registerTheme } from '../../src/index.js';
+      import { demos } from '../../examples/demos.js';
+
+      // Local fonts only, so results don't depend on the network.
+      registerTheme('test', { extends: 'midnight', font: 'Arial, sans-serif', fontMono: '"Courier New", monospace' });
+
+      const hoverAt = (pick) => (c) => {
+        const datum = pick(c);
+        const [x, y, z] = datum.at;
+        const p = c.camera.project(x, y, z);
+        c._pointer = { x: p.x, y: p.y };
+        c._setHover(datum.datum);
+      };
+      const tallest = (c, rank) => [...c.cells.values()].sort((a, b) => b.total - a.total)[rank];
+
+      const CASES = {
+        map: { demo: 'map', options: { arcs: null } },
+        'map-mercator': { demo: 'map', options: { arcs: null, projection: 'mercator', columns: 60, rounding: 0 } },
+        regions: { demo: 'regions', options: { arcs: null } },
+        'regions-hover': {
+          demo: 'regions',
+          options: { arcs: null },
+          setup: hoverAt((c) => {
+            const it = c.items.get('IND');
+            return { datum: it, at: [it.x, it.y, c.topOf(it)] };
+          }),
+        },
+        bars: { demo: 'bars' },
+        'bars-hover': {
+          demo: 'bars',
+          setup: hoverAt((c) => {
+            const cell = tallest(c, 3);
+            return { datum: cell.parts[0], at: [cell.gx, cell.gy, c.z(cell.total) / 2] };
+          }),
+        },
+        'bars-front': { demo: 'bars', setup: (c) => c.setView('front') },
+        stack: { demo: 'stack' },
+        'stack-top': { demo: 'stack', setup: (c) => c.setView('top') },
+        calendar: { demo: 'calendar' },
+        ribbon: { demo: 'ribbon' },
+        'ribbon-hover': {
+          demo: 'ribbon',
+          setup: hoverAt((c) => {
+            const cell = [...c.cells.values()].find((x) => x.i === 20 && x.j === 1);
+            return { datum: cell, at: [cell.gx, cell.gy, c.z(cell.total)] };
+          }),
+        },
+      };
+
+      // Step frames with synthetic timestamps (headless barely runs rAF).
+      function settle(chart, frames) {
+        let t = (settle.t ??= performance.now());
+        for (let i = 0; i < frames; i++) {
+          t += 16;
+          cancelAnimationFrame(chart._raf);
+          chart._raf = null;
+          chart._dirty = true;
+          chart._frame(t);
+        }
+        settle.t = t;
+      }
+
+      const rendered = new Map();
+
+      // Render a case; returns a PNG data URL of its canvas (+ overlay).
+      window.render = async (name) => {
+        await document.fonts.ready;
+        const spec = CASES[name];
+        const el = Object.assign(document.createElement('div'), { className: 'case' });
+        document.body.append(el);
+        const { chart } = demos[spec.demo].create(el, { theme: 'test', ...spec.options });
+        chart.visible = true;
+        if (chart.frames.length > 1) chart.seek(chart.frames.length - 1);
+        settle(chart, 260);
+        if (spec.setup) {
+          spec.setup(chart);
+          settle(chart, 90);
+        }
+        const out = document.createElement('canvas');
+        out.width = chart.renderer.canvas.width;
+        out.height = chart.renderer.canvas.height;
+        const ctx = out.getContext('2d');
+        ctx.drawImage(chart.renderer.canvas, 0, 0);
+        if (chart.overlay) ctx.drawImage(chart.overlay.canvas, 0, 0);
+        rendered.set(name, ctx.getImageData(0, 0, out.width, out.height));
+        chart.destroy();
+        el.remove();
+        return out.toDataURL('image/png');
+      };
+
+      // Compare the last render of `name` with a baseline PNG data URL.
+      // A pixel differs when any channel moves by more than `tolerance`.
+      window.compare = async (name, baselineUrl, tolerance = 6) => {
+        const actual = rendered.get(name);
+        const img = new Image();
+        img.src = baselineUrl;
+        await img.decode();
+        if (img.width !== actual.width || img.height !== actual.height) {
+          return { ratio: 1, reason: `size ${img.width}x${img.height} vs ${actual.width}x${actual.height}` };
+        }
+        const c = document.createElement('canvas');
+        c.width = img.width;
+        c.height = img.height;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const base = ctx.getImageData(0, 0, c.width, c.height);
+        const diff = ctx.createImageData(c.width, c.height);
+        let changed = 0;
+        for (let i = 0; i < base.data.length; i += 4) {
+          let d = 0;
+          for (let k = 0; k < 4; k++) d = Math.max(d, Math.abs(base.data[i + k] - actual.data[i + k]));
+          if (d > tolerance) {
+            changed++;
+            diff.data.set([255, 40, 80, 255], i);
+          } else {
+            // Faint copy of the baseline for context.
+            const g = (base.data[i] + base.data[i + 1] + base.data[i + 2]) / 9;
+            diff.data.set([g, g, g, base.data[i + 3] ? 255 : 0], i);
+          }
+        }
+        ctx.putImageData(diff, 0, 0);
+        return { ratio: changed / (c.width * c.height), changed, diff: c.toDataURL('image/png') };
+      };
+
+      window.caseNames = Object.keys(CASES);
+    </script>
+  </body>
+</html>

@@ -13,7 +13,9 @@
   ],
   "scripts": {
     "dev": "node scripts/dev-server.js",
-    "showcase": "node scripts/build-showcase.js"
+    "showcase": "node scripts/build-showcase.js",
+    "test": "node --test \"test/unit/*.test.js\"",
+    "test:visual": "node test/visual/run.js"
   },
   "keywords": [
     "chart",
