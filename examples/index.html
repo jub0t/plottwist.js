@@ -501,11 +501,33 @@ chart.setTheme('brand');</pre>
         window.regions = chart;
       }
 
-      for (const id of ['race', 'waffle', 'flow', 'surface', 'bars', 'stack']) {
+      for (const id of ['race', 'waffle', 'flow', 'bars', 'stack']) {
         const { chart, shuffle } = create(id);
         const host = $(`${id}-controls`);
         player(chart, host, $(`${id}-year`));
         views(chart, host);
+        host.append(button('Shuffle', shuffle));
+      }
+
+      {
+        const { chart, shuffle } = create('surface');
+        const host = $('surface-controls');
+        player(chart, host, $('surface-year'));
+        // Each style is a handful of options on the same chart.
+        const styles = {
+          solid: {},
+          topo: { bands: true, contours: 10, colorScale: 'emerald' },
+          wireframe: { style: 'wireframe', contours: false },
+          water: { water: { value: 35, label: 'Dead zone' }, peaks: 3 },
+          floating: { float: 2.4, axis: false, bands: 7 },
+          slope: { colorBy: 'slope', colorScale: 'orange', mesh: true },
+        };
+        const reset = Object.fromEntries(
+          [...new Set(Object.values(styles).flatMap(Object.keys))].map((k) => [k, undefined]),
+        );
+        segmented(host, Object.keys(styles), (name) => {
+          chart.reconfigure({ ...reset, ...styles[name] });
+        });
         host.append(button('Shuffle', shuffle));
       }
 

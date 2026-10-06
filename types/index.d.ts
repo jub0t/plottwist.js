@@ -234,6 +234,8 @@ export declare class GridChart<D = any, H = GridPart> extends Chart<H> {
   readonly frameLabel: string | number | null;
   setData(data: D[]): void;
   setFrames(frames: Frame<D>[]): void;
+  /** Change options after creation and rebuild from the current data. */
+  reconfigure(options: Partial<GridChartOptions<D>> & Record<string, unknown>): void;
 }
 
 export interface ReferencePlane {
@@ -324,11 +326,40 @@ export declare class IsoRaceChart<D = any> extends Chart<RaceBar> {
 
 // ---- surface ----------------------------------------------------------------------
 
+export interface WaterLevel {
+  value: number;
+  label?: string;
+  color?: string;
+  /** Default 0.42. */
+  opacity?: number;
+}
+
 export interface IsoSurfaceOptions<D> extends IsoHeatmapOptions<D> {
   /** Contour lines: a count of levels (default 8), explicit values, or false. */
   contours?: number | number[] | false;
+  contourColor?: string;
+  contourWidth?: number;
   /** Draw the grid mesh over the surface. Default false. */
   mesh?: boolean;
+  meshColor?: string;
+  /** Bicubic subdivision factor, 1-6. Default: 3 for small grids, 2 for medium, 1 for large. */
+  smooth?: number;
+  /** 'smooth' averages lighting across vertices; 'flat' lights each facet. Default 'smooth'. */
+  shading?: 'smooth' | 'flat';
+  /** What the colour ramp follows. Default 'height'. */
+  colorBy?: 'height' | 'slope';
+  /** Stepped colours: true for bands between contour levels, or a number of equal bands. */
+  bands?: boolean | number;
+  /** 'wireframe' draws a hidden-line mesh instead of a lit surface. Default 'solid'. */
+  style?: 'solid' | 'wireframe';
+  /** Lift the terrain by this many world units and project a colour map onto the floor. */
+  float?: number;
+  /** A level that floods everything below it. */
+  water?: number | WaterLevel;
+  /** Label the N highest local maxima. */
+  peaks?: number;
+  /** Solid walls down the near edges. Default true. */
+  skirt?: boolean;
 }
 
 /** A lit, coloured surface over a grid of values, with contour lines. */

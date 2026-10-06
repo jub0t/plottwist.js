@@ -44,6 +44,10 @@
         waffle: { demo: 'waffle' },
         flow: { demo: 'flow' },
         surface: { demo: 'surface' },
+        'surface-water': { demo: 'surface', options: { water: { value: 35, label: 'Dead zone' }, peaks: 3 } },
+        'surface-topo': { demo: 'surface', options: { bands: true, contours: 10, colorScale: 'emerald' } },
+        'surface-wireframe': { demo: 'surface', options: { style: 'wireframe', contours: false } },
+        'surface-floating': { demo: 'surface', options: { float: 2.4, bands: 7 } },
         'surface-hover': {
           demo: 'surface',
           setup: hoverAt((c) => {

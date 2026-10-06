@@ -108,3 +108,5 @@ export { terrain };
 const funnel = new IsoFlowChart<{ from: string; to: string; n: number }>('#f', { data: [], source: 'from', target: 'to', value: 'n' });
 funnel.on('hover', (h) => (h?.kind === 'link' ? h.source.id : h?.kind === 'node' ? h.loss : null));
 export { funnel };
+
+terrain.reconfigure({ water: { value: 30, label: 'Sea' }, smooth: 3, bands: true, style: 'wireframe', float: 1, peaks: 2 });

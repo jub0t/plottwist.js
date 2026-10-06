@@ -68,9 +68,17 @@ export class GridChart extends Chart {
     this.setFrames([{ label: null, data }]);
   }
 
+  // Change options after creation (look, scale, axis...) and rebuild from
+  // the current data.
+  reconfigure(options = {}) {
+    Object.assign(this.options, options);
+    this.setFrames(this._rawFrames);
+  }
+
   // frames: [{ label, data: [...] }]
   setFrames(frames) {
     const first = this.frames === undefined;
+    this._rawFrames = frames;
     const all = frames.flatMap((f) => f.data);
     // Category order: explicit domains win, else order of first appearance.
     this.xs = this.options.xDomain ?? unique(all.map(this.x));
