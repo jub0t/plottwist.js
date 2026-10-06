@@ -5,7 +5,7 @@
 // { chart, shuffle } where shuffle() swaps in a fresh random dataset.
 
 import {
-  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoFlowChart, IsoHelixChart,
+  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoFlowChart, IsoHelixChart, IsoTankChart,
 } from '../src/index.js';
 import { worldCountries } from '../src/geo/countries.js';
 
@@ -309,6 +309,32 @@ function bikeRides(seed) {
   });
 }
 
+// ---- reservoirs (tanks) --------------------------------------------------------------
+
+// Stored water in six reservoirs, GL, through a dry year: [name, capacity,
+// minimum safe level, how hard the dry season hits].
+const RESERVOIRS = [
+  ['Harlow', 420, 120, 0.5], ['Kestrel', 300, 90, 1.05], ['Mere', 510, 140, 0.35],
+  ['Ashby', 260, 80, 1.25], ['Tarn', 380, 110, 0.6], ['Wych', 220, 70, 0.8],
+];
+
+function reservoirLevels(seed) {
+  const r = rng(seed);
+  const start = RESERVOIRS.map(() => 0.78 + r() * 0.18);
+  return ['Mar', 'May', 'Jul', 'Sep', 'Nov', 'Jan'].map((label, t) => {
+    const dry = [0, 0.35, 0.8, 1, 0.55, 0.15][t];
+    return {
+      label,
+      data: RESERVOIRS.map(([name, capacity, minimum, hit], k) => ({
+        name,
+        capacity,
+        minimum,
+        stored: capacity * Math.max(0.08, start[k] - dry * hit * 0.62) * (0.96 + r() * 0.08),
+      })),
+    };
+  });
+}
+
 // ---- demos ------------------------------------------------------------------------
 
 // Builds a demo: `make(seed)` produces data, `build(el, data, extra)` the chart.
@@ -446,6 +472,25 @@ export const demos = {
         valueLabel: 'Rides',
         format: (v) => `${v.toFixed(1)}k`,
         ariaLabel: 'Helix of weekly bike-share rides 2021 to 2025, one turn per year',
+        ...extra,
+      }),
+    ),
+  },
+  tanks: {
+    title: 'Liquid tanks',
+    type: 'IsoTankChart',
+    create: demo(13, 5521, reservoirLevels, (el, frames, extra) =>
+      new IsoTankChart(el, {
+        frames,
+        key: 'name',
+        value: 'stored',
+        capacity: 'capacity',
+        target: 'minimum',
+        color: '#38bdf8',
+        valueLabel: 'Stored',
+        targetLabel: 'Safe minimum',
+        format: (v) => `${v.toFixed(0)} GL`,
+        ariaLabel: 'Six reservoirs as glass tanks through a dry year, with safe minimum levels',
         ...extra,
       }),
     ),

@@ -1,6 +1,6 @@
 // Compile-only check that the public types describe real usage.
 // Run with: npm run test:types
-import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoSurface, IsoWaffleChart, IsoFlowChart, IsoHelixChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
+import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoSurface, IsoWaffleChart, IsoFlowChart, IsoHelixChart, IsoTankChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
 import { worldCountries } from 'plottwist/geo/countries';
 
 interface Row {
@@ -116,3 +116,7 @@ coil.on('hover', (p) => (p ? coil.previousCycle(p)?.value : null));
 // @ts-expect-error unknown cycle
 new IsoHelixChart('#h', { cycle: 'month' });
 export { coil };
+
+const reservoirs = new IsoTankChart<{ name: string; gl: number; cap: number }>('#t', { data: [], value: 'gl', capacity: 'cap', target: 80, alertColor: false });
+reservoirs.on('hover', (t) => t?.level);
+export { reservoirs };

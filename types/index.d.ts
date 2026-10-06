@@ -510,6 +510,53 @@ export declare class IsoHelixChart<D = any> extends Chart<HelixPoint<D>> {
   previousCycle(point: HelixPoint<D>): HelixPoint<D> | null;
 }
 
+// ---- liquid tanks ---------------------------------------------------------------------
+
+export interface Tank {
+  readonly key: string | number;
+  readonly index: number;
+  /** Current (interpolated) value. */
+  readonly value: number;
+  readonly capacity: number;
+  readonly target: number | null;
+  /** How full the liquid is right now, 0..1 (it overshoots a little while settling). */
+  readonly level: number;
+}
+
+export interface IsoTankChartOptions<D> extends ChartOptions {
+  data?: D[];
+  frames?: Frame<D>[];
+  /** Tank of each record. Default 'name'. */
+  key?: Accessor<D, string | number>;
+  value?: Accessor<D, number>;
+  /** A number for every tank, or a field per record. Default: the largest value seen. */
+  capacity?: number | Accessor<D, number>;
+  /** A level to stay above, drawn as a dashed ring. */
+  target?: number | Accessor<D, number>;
+  /** One liquid colour for every tank (default: the series palette). */
+  color?: string;
+  /** Liquid colour below target, or false to keep the normal colour. Default amber. */
+  alertColor?: string | false;
+  /** Colours by tank when `color` isn't set. */
+  colors?: string[] | Record<string, string> | ((key: string | number, index: number) => string | undefined);
+  radius?: number;
+  height?: number;
+  perRow?: number;
+  format?: (value: number) => string;
+  valueLabel?: string;
+  targetLabel?: string;
+}
+
+/** Values as liquid in glass tanks that pour, overshoot and slosh when the data changes. */
+export declare class IsoTankChart<D = any> extends Chart<Tank> {
+  constructor(container: HTMLElement | string, options?: IsoTankChartOptions<D>);
+  readonly options: IsoTankChartOptions<D>;
+  readonly frameLabel: string | number | null;
+  readonly tanks: Tank[];
+  setData(data: D[]): void;
+  setFrames(frames: Frame<D>[]): void;
+}
+
 // ---- maps ---------------------------------------------------------------------
 
 export type LonLat = [lon: number, lat: number];

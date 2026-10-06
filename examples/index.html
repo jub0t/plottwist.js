@@ -195,6 +195,15 @@
       </section>
 
       <section>
+        <h2>Liquid tanks</h2>
+        <p>Six reservoirs through a dry year, sample data. Dashed rings mark each safe minimum; a tank turns amber below it. Each step pours in or drains, overshoots and settles.</p>
+        <div class="card">
+          <div class="stage"><div class="year" id="tanks-year"></div><div class="chart" id="tanks"></div></div>
+          <div class="controls" id="tanks-controls"></div>
+        </div>
+      </section>
+
+      <section>
         <h2>Terrain surface</h2>
         <p>Wi-Fi signal quality across a 36 × 24 m office floor through the day, sample data. Contour lines follow the value axis; hover to probe a point.</p>
         <div class="card">
@@ -510,7 +519,7 @@ chart.setTheme('brand');</pre>
         window.regions = chart;
       }
 
-      for (const id of ['race', 'waffle', 'flow', 'bars', 'stack']) {
+      for (const id of ['race', 'waffle', 'flow', 'tanks', 'bars', 'stack']) {
         const { chart, shuffle } = create(id);
         const host = $(`${id}-controls`);
         player(chart, host, $(`${id}-year`));
