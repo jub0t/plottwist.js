@@ -1,6 +1,6 @@
 // Compile-only check that the public types describe real usage.
 // Run with: npm run test:types
-import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
+import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoWaffleChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
 import { worldCountries } from 'plottwist/geo/countries';
 
 interface Row {
@@ -92,3 +92,10 @@ async function exportUsage(chart: IsoBarChart<{ region: string; platform: string
   return blob;
 }
 export { exportUsage };
+
+// Waffle: accessors are checked against the record type.
+const mix = new IsoWaffleChart<{ source: string; twh: number }>('#w', { data: [{ source: 'Coal', twh: 3 }], key: 'source', value: 'twh', unit: 2 });
+mix.on('hover', (c) => c?.key);
+// @ts-expect-error not a field of the record
+new IsoWaffleChart<{ source: string; twh: number }>('#w', { key: 'nope' });
+export { mix };

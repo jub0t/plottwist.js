@@ -322,6 +322,46 @@ export declare class IsoRaceChart<D = any> extends Chart<RaceBar> {
   setFrames(frames: Frame<D>[]): void;
 }
 
+// ---- cube waffle ----------------------------------------------------------------
+
+export interface WaffleCategory {
+  readonly key: string | number;
+  readonly index: number;
+}
+
+export interface IsoWaffleChartOptions<D> extends ChartOptions {
+  data?: D[];
+  frames?: Frame<D>[];
+  /** Category of each record. Default 'name'. */
+  key?: Accessor<D, string | number>;
+  value?: Accessor<D, number>;
+  /** Value of one cube. Default: a round number that keeps the biggest stack to about `layers` layers. */
+  unit?: number;
+  /** Shown after the unit in the key, e.g. 'TWh'. */
+  unitLabel?: string;
+  /** Target layer count for the automatic unit. Default 8. */
+  layers?: number;
+  /** Cubes per layer as [columns, rows]. Default [4, 4]. */
+  footprint?: [number, number];
+  /** Stacks per row. Default: a near-square grid. */
+  perRow?: number;
+  /** Colours by category: array, { key: colour } map or function. */
+  colors?: string[] | Record<string, string> | ((key: string | number, index: number) => string | undefined);
+  format?: (value: number) => string;
+  valueLabel?: string;
+}
+
+/** Each category is a stack of cubes; between frames cubes fly from shrinking stacks to growing ones. */
+export declare class IsoWaffleChart<D = any> extends Chart<WaffleCategory> {
+  constructor(container: HTMLElement | string, options?: IsoWaffleChartOptions<D>);
+  readonly options: IsoWaffleChartOptions<D>;
+  readonly frameLabel: string | number | null;
+  /** Value of one cube. */
+  readonly unit: number;
+  setData(data: D[]): void;
+  setFrames(frames: Frame<D>[]): void;
+}
+
 // ---- maps ---------------------------------------------------------------------
 
 export type LonLat = [lon: number, lat: number];

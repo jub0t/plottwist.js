@@ -4,7 +4,9 @@
 // Each demo's create(el, options) builds its chart and returns
 // { chart, shuffle } where shuffle() swaps in a fresh random dataset.
 
-import { IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart } from '../src/index.js';
+import {
+  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoWaffleChart,
+} from '../src/index.js';
 import { worldCountries } from '../src/geo/countries.js';
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -209,6 +211,25 @@ function appUsers(seed) {
   });
 }
 
+// ---- energy mix (cube waffle) ------------------------------------------------------
+
+// [source, TWh in 2000, TWh in 2025]: a synthetic country shifting from coal
+// to wind and solar. Years in between ease along an S-curve, with noise.
+const SOURCES = [
+  ['Coal', 124, 18], ['Gas', 58, 74], ['Nuclear', 52, 44], ['Hydro', 30, 33], ['Wind', 1, 72], ['Solar', 0, 66],
+];
+
+function energyMix(seed) {
+  const r = rng(seed);
+  return [2000, 2005, 2010, 2015, 2020, 2025].map((year, t) => {
+    const s = 1 / (1 + Math.exp(-(t - 3) * 1.4));
+    return {
+      label: year,
+      data: SOURCES.map(([source, a, b]) => ({ source, twh: Math.max(0, (a + (b - a) * s) * (0.94 + r() * 0.12)) })),
+    };
+  });
+}
+
 // ---- demos ------------------------------------------------------------------------
 
 // Builds a demo: `make(seed)` produces data, `build(el, data, extra)` the chart.
@@ -276,6 +297,25 @@ export const demos = {
         format: (v) => `${v.toFixed(0)}M`,
         frameDuration: 900,
         ariaLabel: 'Bar chart race of monthly active users by app over time',
+        ...extra,
+      }),
+    ),
+  },
+  waffle: {
+    title: 'Cube waffle',
+    type: 'IsoWaffleChart',
+    create: demo(4, 8191, energyMix, (el, frames, extra) =>
+      new IsoWaffleChart(el, {
+        frames,
+        key: 'source',
+        value: 'twh',
+        footprint: [3, 3],
+        unit: 2,
+        unitLabel: 'TWh',
+        valueLabel: 'Generation',
+        format: (v) => `${v.toFixed(0)}`,
+        colors: { Coal: '#64748b', Gas: '#d97706', Nuclear: '#8b5cf6', Hydro: '#3b82f6', Wind: '#0891b2', Solar: '#ec4899' },
+        ariaLabel: 'Cube waffle of electricity generation by source over time; each cube is 2 TWh',
         ...extra,
       }),
     ),

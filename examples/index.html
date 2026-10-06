@@ -168,6 +168,15 @@
       </section>
 
       <section>
+        <h2>Cube waffle</h2>
+        <p>Electricity generation by source in a fictional country, 2000–2025; one cube is 2 TWh. Press play and watch cubes leave coal for wind and solar.</p>
+        <div class="card">
+          <div class="stage"><div class="year" id="waffle-year"></div><div class="chart" id="waffle"></div></div>
+          <div class="controls" id="waffle-controls"></div>
+        </div>
+      </section>
+
+      <section>
         <h2>Bars over time</h2>
         <p>Monthly active users by region and platform, millions, 2018–2025.</p>
         <div class="card"><div class="stage"><div class="year" id="bars-year"></div><div class="chart" id="bars"></div></div><div class="controls" id="bars-controls"></div></div>
@@ -474,7 +483,7 @@ chart.setTheme('brand');</pre>
         window.regions = chart;
       }
 
-      for (const id of ['race', 'bars', 'stack']) {
+      for (const id of ['race', 'waffle', 'bars', 'stack']) {
         const { chart, shuffle } = create(id);
         const host = $(`${id}-controls`);
         player(chart, host, $(`${id}-year`));
