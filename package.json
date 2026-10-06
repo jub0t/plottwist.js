@@ -1,6 +1,6 @@
 {
   "name": "plottwist",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Isometric, animated, interactive charts for the web.",
   "type": "module",
   "main": "src/index.js",
