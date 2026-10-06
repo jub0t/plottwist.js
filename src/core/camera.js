@@ -45,6 +45,17 @@ export class Camera {
     };
   }
 
+  // Screen point -> world point on the ground plane (z = 0), or null when the
+  // camera looks along the ground and the ray never meets it.
+  unproject(px, py) {
+    if (this._sp < 1e-3) return null;
+    const sx = (px - this.zx) / this.zoom + this.zx;
+    const sy = (py - this.zy) / this.zoom + this.zy;
+    const u = (sx - this.cx) / this.scale;
+    const v = (sy - this.cy) / this.scale / this._sp;
+    return [u * this._cy + v * this._sy, -u * this._sy + v * this._cy];
+  }
+
   // Ground-plane depth, used to order objects that stand on the floor.
   groundDepth(x, y) {
     return x * this._sy + y * this._cy;

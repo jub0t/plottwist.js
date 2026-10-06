@@ -50,6 +50,9 @@
         box-shadow: 0 20px 60px -30px var(--aura);
       }
       .chart { height: min(62vh, 540px); }
+      .chart.map { height: min(72vh, 640px); }
+      label.knob { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+      label.knob input { width: 110px; flex: none; min-width: 0; }
       .stage { position: relative; }
       /* The current frame is page UI, driven by the chart's 'frame' event. */
       .year {
@@ -121,6 +124,16 @@
       </p>
 
       <section>
+        <h2>Hex world map</h2>
+        <p>Active users by location, sample data around 45 real cities. Every point is binned into the hex at its exact coordinates.</p>
+        <div class="card">
+          <div class="stage"><div class="year" id="map-year"></div><div class="chart map" id="map"></div></div>
+          <div class="controls" id="map-controls"></div>
+          <div class="controls" id="map-controls-2"></div>
+        </div>
+      </section>
+
+      <section>
         <h2>Bars over time</h2>
         <p>Monthly active users by region and platform, millions, 2018–2025.</p>
         <div class="card"><div class="stage"><div class="year" id="bars-year"></div><div class="chart" id="bars"></div></div><div class="controls" id="bars-controls"></div></div>
@@ -171,7 +184,7 @@ chart.setTheme('brand');</pre>
     </main>
 
     <script type="module">
-      import { IsoBarChart, IsoHeatmap, IsoRibbonChart, themes, scales } from '../src/index.js';
+      import { IsoBarChart, IsoHeatmap, IsoHexMap, IsoRibbonChart, themes, scales } from '../src/index.js';
 
       // ---- helpers ------------------------------------------------------------
 
@@ -253,6 +266,113 @@ chart.setTheme('brand');</pre>
       }
       segmented(document.querySelector('#themes'), ['midnight', 'dark'], applyTheme, themeName);
       applyTheme(themeName);
+
+      // ---- 0. hex world map ------------------------------------------------------
+
+      {
+        // [name, lon, lat, weight]: real coordinates; weights are made up.
+        const cities = [
+          ['New York', -74.0, 40.71, 10], ['Los Angeles', -118.24, 34.05, 7], ['Chicago', -87.63, 41.88, 6],
+          ['Toronto', -79.38, 43.65, 4], ['Vancouver', -123.12, 49.28, 2], ['San Francisco', -122.42, 37.77, 7],
+          ['Miami', -80.19, 25.76, 3], ['Mexico City', -99.13, 19.43, 5], ['Bogotá', -74.07, 4.71, 3],
+          ['Lima', -77.04, -12.05, 2], ['Manaus', -60.02, -3.12, 1], ['São Paulo', -46.63, -23.55, 7],
+          ['Buenos Aires', -58.38, -34.6, 4], ['London', -0.13, 51.51, 9], ['Paris', 2.35, 48.86, 7],
+          ['Berlin', 13.4, 52.52, 6], ['Madrid', -3.7, 40.42, 4], ['Rome', 12.5, 41.9, 3],
+          ['Stockholm', 18.07, 59.33, 2], ['Moscow', 37.62, 55.76, 5], ['Istanbul', 28.98, 41.01, 4],
+          ['Casablanca', -7.59, 33.57, 2], ['Cairo', 31.24, 30.04, 4], ['Lagos', 3.38, 6.52, 4],
+          ['Nairobi', 36.82, -1.29, 2], ['Johannesburg', 28.05, -26.2, 3], ['Riyadh', 46.68, 24.71, 3],
+          ['Dubai', 55.27, 25.2, 4], ['Karachi', 67.0, 24.86, 3], ['Delhi', 77.1, 28.7, 7],
+          ['Mumbai', 72.88, 19.08, 7], ['Bangalore', 77.59, 12.97, 6], ['Bangkok', 100.5, 13.76, 4],
+          ['Ho Chi Minh City', 106.63, 10.82, 3], ['Singapore', 103.82, 1.35, 5], ['Jakarta', 106.85, -6.21, 5],
+          ['Manila', 120.98, 14.6, 4], ['Shenzhen', 114.06, 22.54, 7], ['Shanghai', 121.47, 31.23, 9],
+          ['Beijing', 116.41, 39.9, 8], ['Seoul', 126.98, 37.57, 6], ['Tokyo', 139.69, 35.69, 9],
+          ['Sydney', 151.21, -33.87, 4], ['Melbourne', 144.96, -37.81, 3], ['Auckland', 174.76, -36.85, 1],
+        ];
+        const years = [2020, 2021, 2022, 2023, 2024, 2025];
+        const make = (seed) => {
+          const r = rng(seed);
+          const gauss = () => Math.sqrt(-2 * Math.log(r() + 1e-9)) * Math.cos(2 * Math.PI * r());
+          const growth = cities.map(() => 0.05 + r() * 0.35);
+          // Fixed scatter per city so hexes persist across years and morph smoothly.
+          const points = cities.flatMap(([city, lon, lat, w], ci) =>
+            Array.from({ length: 6 + w * 3 }, () => ({
+              city,
+              lon: lon + gauss() * (0.6 + w * 0.12),
+              lat: lat + gauss() * (0.5 + w * 0.1),
+              share: r() * r(),
+              ci,
+            })),
+          );
+          return years.map((year, t) => ({
+            label: year,
+            data: points.map((p) => ({
+              ...p,
+              users: cities[p.ci][3] * p.share * 40 * (1 + growth[p.ci]) ** t,
+            })),
+          }));
+        };
+        let seed = 21;
+        const at = (name) => cities.find((c) => c[0] === name).slice(1, 3);
+        const arcs = [
+          ['New York', 'London'], ['London', 'Mumbai'], ['Shanghai', 'Tokyo'], ['New York', 'São Paulo'],
+          ['London', 'Lagos'], ['Shanghai', 'Sydney'], ['Mumbai', 'Shanghai'],
+        ].map(([a, b]) => ({ from: at(a), to: at(b) }));
+
+        const chart = new IsoHexMap('#map', {
+          frames: make(seed),
+          lon: 'lon',
+          lat: 'lat',
+          value: 'users',
+          theme: themeName,
+          columns: 110,
+          rounding: 0.45,
+          gap: 0.16,
+          callouts: 5,
+          arcs,
+          label: (d) => d.city,
+          valueLabel: 'Users',
+          format: (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)),
+          ariaLabel: 'Hexagonal world map of active users by location',
+        });
+        const host = document.querySelector('#map-controls');
+        player(chart, host, document.querySelector('#map-year'));
+        views(chart, host);
+        host.append(button('Shuffle', () => chart.setFrames(make(++seed * 7177))));
+
+        const host2 = document.querySelector('#map-controls-2');
+        const knob = (label, min, max, step, value, oninput) => {
+          const input = el('input', { type: 'range', min, max, step, value });
+          input.oninput = () => oninput(+input.value);
+          const wrap = el('label', { className: 'knob', textContent: label });
+          wrap.append(input);
+          host2.append(wrap);
+        };
+        knob('Rounding', 0, 1, 0.01, 0.45, (v) => chart.reconfigure({ rounding: v }));
+        knob('Gap', 0, 0.5, 0.01, 0.16, (v) => chart.reconfigure({ gap: v }));
+        const pick = (label, options, value, onchange) => {
+          const select = el('select', { ariaLabel: label });
+          for (const o of options) select.append(el('option', { value: o, textContent: `${label}: ${o}` }));
+          select.value = value;
+          select.onchange = () => onchange(select.value);
+          host2.append(select);
+        };
+        pick('Hexes', ['60', '110', '160'], '110', (v) => chart.reconfigure({ columns: +v }));
+        pick('Projection', ['equalEarth', 'mercator', 'equirectangular'], 'equalEarth', (v) =>
+          chart.reconfigure({ projection: v }),
+        );
+        pick('Scale', ['theme', ...Object.keys(scales)], 'theme', (v) => {
+          chart.options.colorScale = v === 'theme' ? undefined : v;
+          chart.invalidate();
+        });
+        const arcsBtn = button('Hide arcs', () => {
+          const on = !chart.options.arcs;
+          chart.reconfigure({ arcs: on ? arcs : null });
+          arcsBtn.textContent = on ? 'Hide arcs' : 'Show arcs';
+        });
+        host2.append(arcsBtn);
+        charts.push(chart);
+        window.map = chart;
+      }
 
       // ---- 1. bars over time ----------------------------------------------------
 

@@ -9,10 +9,14 @@ const GLOW_RINGS = [
 // polygons and text, and records hit regions for pointer picking.
 
 export class Renderer {
-  constructor(container, { onResize } = {}) {
+  // overlay: an extra layer stacked above the main canvas that ignores the
+  // pointer, for content that animates independently of the scene.
+  constructor(container, { onResize, overlay = false } = {}) {
     this.container = container;
     this.canvas = document.createElement('canvas');
-    this.canvas.style.cssText = 'display:block;width:100%;height:100%;touch-action:none;';
+    this.canvas.style.cssText = overlay
+      ? 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;'
+      : 'display:block;width:100%;height:100%;touch-action:none;';
     container.appendChild(this.canvas);
     this.ctx = this.canvas.getContext('2d');
     this.width = 0;

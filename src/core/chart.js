@@ -138,7 +138,13 @@ export class Chart {
     this._listeners[event]?.forEach((fn) => fn(payload));
   }
 
+  // Request a full redraw on the next frame.
   invalidate() {
+    this._dirty = true;
+    this._schedule();
+  }
+
+  _schedule() {
     this._raf ??= requestAnimationFrame((now) => this._frame(now));
   }
 
@@ -146,7 +152,10 @@ export class Chart {
     this._raf = null;
     // Offscreen: stop the loop; the observer restarts it on re-entry. Tweens
     // are time-based, so they land in the right place when it resumes.
-    if (!this.visible) return;
+    if (!this.visible) {
+      this._dirty = true;
+      return;
+    }
     let active = false;
 
     for (const t of Object.values(this.view)) active = t.tick(now) || active;
@@ -172,9 +181,16 @@ export class Chart {
     this.camera.update();
 
     active = this.tick(now) || active;
-    this.renderer.begin(this.theme.background);
-    this.draw();
-    if (active) this.invalidate();
+    // The main canvas only redraws when something on it changed. Charts with
+    // a continuously animated overlay (e.g. flowing arcs) redraw just that.
+    if (active || this._dirty) {
+      this._dirty = false;
+      this.renderer.begin(this.theme.background);
+      this.draw();
+    }
+    const overlay = this.drawOverlay?.(now) ?? false;
+    if (active) this._dirty = true;
+    if (active || overlay || this._dirty) this._schedule();
   }
 
   // Ease the camera's scale/origin toward a fit of `points`. Holds still while
@@ -195,6 +211,12 @@ export class Chart {
       if (moving) this.invalidate();
     }
     Object.assign(C, this._fit, { zx: R.width / 2, zy: R.height / 2 });
+  }
+
+  // What's under a screen point: registered hit regions first, then the
+  // chart's own fallback (e.g. a ground-plane lookup).
+  pick(x, y) {
+    return this.renderer.pick(x, y) ?? this.pickGround?.(x, y) ?? null;
   }
 
   tick() {
@@ -253,7 +275,7 @@ export class Chart {
         return;
       }
       this._pointer = p;
-      this._setHover(this.renderer.pick(p.x, p.y));
+      this._setHover(this.pick(p.x, p.y));
     };
 
     const onUp = (e) => {
@@ -266,7 +288,7 @@ export class Chart {
       this.invalidate();
       if (!wasDrag) {
         const p = local(e);
-        const datum = this.renderer.pick(p.x, p.y);
+        const datum = this.pick(p.x, p.y);
         if (datum) this.emit('click', datum);
       }
     };

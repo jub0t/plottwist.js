@@ -50,6 +50,7 @@ export const themes = {
     surface: '#07070b', // what the chart sits on; used for gaps and rings
     floor: '#0c0c14',
     grid: '#262640',
+    land: '#1b1a33',
     highlight: '#17172b',
     text: '#f4f3ff',
     textMuted: '#9897b8',
@@ -69,6 +70,7 @@ export const themes = {
     surface: '#131319',
     floor: '#1b1b24',
     grid: '#2b2b38',
+    land: '#2a2a3a',
     highlight: '#262636',
     text: '#f4f4f8',
     textMuted: '#a3a3b8',
