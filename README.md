@@ -2,7 +2,7 @@
 
 Isometric, animated, interactive charts for the web. Zero runtime dependencies, Canvas 2D.
 
-<img alt="plottwist charts: a hex world map, an extruded region map, 3D bars over time, stacked city blocks, ribbon lines and a calendar heatmap" src="docs/showcase.png" />
+<img alt="plottwist charts: a hex world map, an extruded region map, 3D bars over time, stacked city blocks, ribbon lines and a calendar heatmap" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/showcase.png" />
 
 ```js
 import { IsoBarChart, IsoHexMap } from 'plottwist';

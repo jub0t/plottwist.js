@@ -41,6 +41,14 @@
     "animation"
   ],
   "author": "Jareer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jub0t/plottwist.js.git"
+  },
+  "homepage": "https://github.com/jub0t/plottwist.js#readme",
+  "bugs": {
+    "url": "https://github.com/jub0t/plottwist.js/issues"
+  },
   "license": "Apache-2.0",
   "engines": {
     "node": ">=20.11"
