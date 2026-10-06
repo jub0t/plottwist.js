@@ -113,12 +113,19 @@ export class Renderer {
     return this.ctx.measureText(str).width;
   }
 
-  text(str, x, y, { color, size = 12, weight = 400, align = 'center', baseline = 'middle', mono = false } = {}) {
+  // halo: an outline colour drawn under the text so it reads on any mark.
+  text(str, x, y, { color, size = 12, weight = 400, align = 'center', baseline = 'middle', mono = false, halo } = {}) {
     const { ctx } = this;
     ctx.font = this.font(size, weight, mono);
-    ctx.fillStyle = color;
     ctx.textAlign = align;
     ctx.textBaseline = baseline;
+    if (halo) {
+      ctx.strokeStyle = halo;
+      ctx.lineWidth = 3;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(str, x, y);
+    }
+    ctx.fillStyle = color;
     ctx.fillText(str, x, y);
   }
 

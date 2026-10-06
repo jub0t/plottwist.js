@@ -1,6 +1,5 @@
-// Renders the README showcase images with headless Chrome:
-//   docs/showcase-dark.png   charts on a transparent background (GitHub dark)
-//   docs/showcase-light.png  the same on a midnight card (GitHub light)
+// Renders the README showcase image with headless Chrome:
+//   docs/showcase.png   every demo chart on a transparent background
 //
 //   npm run showcase
 //
@@ -77,18 +76,16 @@ try {
     return r.result.result.value;
   };
 
-  await send('Emulation.setDeviceMetricsOverride', { width: 1200, height: 1600, deviceScaleFactor: 2, mobile: false });
+  await send('Emulation.setDeviceMetricsOverride', { width: 1200, height: 1200, deviceScaleFactor: 2, mobile: false });
   await send('Page.enable');
   await send('Page.navigate', { url: `http://127.0.0.1:${port}/examples/showcase.html` });
   for (let i = 0; i < 50 && !(await evaluate('!!window.compose')); i++) await sleep(200);
 
   await mkdir(join(root, 'docs'), { recursive: true });
-  for (const [variant, name] of [['transparent', 'showcase-dark.png'], ['card', 'showcase-light.png']]) {
-    const url = await evaluate(`window.compose(${JSON.stringify(variant)})`);
-    const png = Buffer.from(url.split(',')[1], 'base64');
-    await writeFile(join(root, 'docs', name), png);
-    console.log(`wrote docs/${name} (${(png.length / 1024).toFixed(0)} KB)`);
-  }
+  const url = await evaluate('window.compose()');
+  const png = Buffer.from(url.split(',')[1], 'base64');
+  await writeFile(join(root, 'docs', 'showcase.png'), png);
+  console.log(`wrote docs/showcase.png (${(png.length / 1024).toFixed(0)} KB)`);
   ws.close();
 } finally {
   const exited = new Promise((r) => chrome.once('exit', r));

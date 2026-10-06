@@ -124,7 +124,7 @@ export class IsoBarChart extends GridChart {
       if (placed.some((q) => box.l < q.r && box.r > q.l && box.t < q.b && box.b > q.t)) continue;
       placed.push(box);
       R.ctx.globalAlpha = 1 - 0.6 * this.dimFor(cell);
-      R.text(text, p.x, p.y - 15, { color: theme.text, size: 11, weight: 600, mono: true });
+      R.text(text, p.x, p.y - 15, { color: theme.text, size: 11, weight: 600, mono: true, halo: theme.surface });
     }
     R.ctx.globalAlpha = 1;
   }

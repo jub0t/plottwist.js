@@ -19,29 +19,35 @@
       import { demos } from './demos.js';
 
       const W = 1200;
-      const PAD = 40;
-      const LABEL = 30;
-      const GAP = 28;
+      const PAD = 8;
+      const LABEL = 22;
+      const GAP = 10;
       const inner = W - PAD * 2;
       const half = (inner - GAP) / 2;
+      const third = (inner - GAP * 2) / 3;
 
-      // [demo id, x, y, w, h] of each chart, below its label.
+      // [demo id, x, y, w, h] of each chart, below its title. Packed tight:
+      // maps side by side, three grid charts in a row, the calendar as a strip.
       const layout = [];
       let y = PAD;
-      layout.push(['map', PAD, y + LABEL, inner, 560]);
-      y += LABEL + 560 + GAP;
-      layout.push(['bars', PAD, y + LABEL, half, 380], ['stack', PAD + half + GAP, y + LABEL, half, 380]);
-      y += LABEL + 380 + GAP;
-      layout.push(['calendar', PAD, y + LABEL, half, 380], ['ribbon', PAD + half + GAP, y + LABEL, half, 380]);
-      y += LABEL + 380;
+      layout.push(['map', PAD, y + LABEL, half, 340], ['regions', PAD + half + GAP, y + LABEL, half, 340]);
+      y += LABEL + 340 + GAP;
+      layout.push(
+        ['bars', PAD, y + LABEL, third, 330],
+        ['stack', PAD + third + GAP, y + LABEL, third, 330],
+        ['ribbon', PAD + (third + GAP) * 2, y + LABEL, third, 330],
+      );
+      y += LABEL + 330 + GAP;
+      layout.push(['calendar', PAD, y + LABEL, inner, 270]);
+      y += LABEL + 270;
       const H = y + PAD;
 
       const charts = layout.map(([id, x, top, w, h]) => {
         const el = Object.assign(document.createElement('div'), { className: 'tile' });
         Object.assign(el.style, { left: `${x}px`, top: `${top}px`, width: `${w}px`, height: `${h}px` });
         document.body.append(el);
-        // The README preview leaves out the map's arcs.
-        const extra = id === 'map' ? { arcs: null } : {};
+        // The README preview leaves out the maps' arcs.
+        const extra = id === 'map' || id === 'regions' ? { arcs: null } : {};
         return demos[id].create(el, { theme: 'midnight', ...extra }).chart;
       });
 
@@ -65,9 +71,8 @@
         }
       }
 
-      // variant 'transparent': charts on nothing (for dark page backgrounds).
-      // variant 'card': the same on a rounded midnight card (for light pages).
-      window.compose = async (variant) => {
+      // Composite every chart onto one transparent canvas, each under its title.
+      window.compose = async () => {
         await document.fonts.load('600 14px Inter');
         await document.fonts.load('400 12px "JetBrains Mono"');
         await document.fonts.ready;
@@ -80,40 +85,14 @@
         const ctx = out.getContext('2d');
         ctx.scale(dpr, dpr);
 
-        if (variant === 'card') {
-          ctx.beginPath();
-          ctx.roundRect(0.5, 0.5, W - 1, H - 1, 28);
-          ctx.fillStyle = '#07070b';
-          ctx.fill();
-          ctx.save();
-          ctx.clip();
-          for (const [x, y, r] of [[W * 0.15, -60, 700], [W * 0.95, 120, 520]]) {
-            const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-            g.addColorStop(0, 'rgba(110, 70, 255, 0.16)');
-            g.addColorStop(1, 'rgba(110, 70, 255, 0)');
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, W, H);
-          }
-          ctx.restore();
-          ctx.strokeStyle = '#262640';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
-
         layout.forEach(([id, x, top, w, h], i) => {
           const chart = charts[i];
-          // Label: chart name in ink, class name in mono.
+          // A mid grey that reads on both light and dark page backgrounds.
           ctx.textBaseline = 'middle';
           ctx.textAlign = 'left';
-          ctx.font = '600 15px Inter, sans-serif';
-          ctx.fillStyle = '#f4f3ff';
-          const ly = top - LABEL / 2 - 2;
-          ctx.fillText(demos[id].title, x + 4, ly);
-          const tw = ctx.measureText(demos[id].title).width;
-          ctx.font = '400 12px "JetBrains Mono", monospace';
-          ctx.fillStyle = '#9897b8';
-          ctx.fillText(demos[id].type + (chart.frameLabel != null ? ` · ${chart.frameLabel}` : ''), x + tw + 14, ly + 1);
-
+          ctx.font = '600 14px Inter, sans-serif';
+          ctx.fillStyle = '#8b8aa3';
+          ctx.fillText(demos[id].title, x + 4, top - LABEL / 2);
           ctx.drawImage(chart.renderer.canvas, x, top, w, h);
           if (chart.overlay) ctx.drawImage(chart.overlay.canvas, x, top, w, h);
         });

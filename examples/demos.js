@@ -4,7 +4,8 @@
 // Each demo's create(el, options) builds its chart and returns
 // { chart, shuffle } where shuffle() swaps in a fresh random dataset.
 
-import { IsoBarChart, IsoHeatmap, IsoHexMap, IsoRibbonChart } from '../src/index.js';
+import { IsoBarChart, IsoHeatmap, IsoHexMap, IsoRegionMap, IsoRibbonChart } from '../src/index.js';
+import { worldCountries } from '../src/geo/countries.js';
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -150,6 +151,31 @@ function visits(seed) {
   });
 }
 
+// ---- region map ------------------------------------------------------------------
+
+// ISO alpha-3 codes with made-up base weights.
+const markets = {
+  USA: 10, CAN: 4, MEX: 3, BRA: 5, ARG: 2, COL: 2, CHL: 1.5, GBR: 6, FRA: 5, DEU: 7, ESP: 3, ITA: 3,
+  NLD: 2.5, SWE: 2, POL: 2, TUR: 2, RUS: 4, EGY: 1.5, NGA: 2, ZAF: 2, KEN: 1, SAU: 2.5, ARE: 2, IND: 7,
+  PAK: 1.5, CHN: 9, JPN: 6, KOR: 4, IDN: 3, THA: 2, VNM: 2, PHL: 1.5, MYS: 1.5, AUS: 4, NZL: 1,
+};
+
+function revenueByCountry(seed) {
+  const r = rng(seed);
+  const growth = Object.fromEntries(Object.keys(markets).map((k) => [k, 0.02 + r() * 0.3]));
+  return [2021, 2022, 2023, 2024, 2025].map((year, t) => ({
+    label: year,
+    data: Object.entries(markets).map(([country, w]) => ({
+      country,
+      revenue: w * 12 * (1 + growth[country]) ** t * (0.9 + r() * 0.2),
+    })),
+  }));
+}
+
+export const regionArcs = [
+  ['USA', 'GBR'], ['GBR', 'IND'], ['CHN', 'JPN'], ['USA', 'BRA'], ['DEU', 'ZAF'], ['CHN', 'AUS'],
+].map(([from, to]) => ({ from, to }));
+
 // ---- demos ------------------------------------------------------------------------
 
 // Builds a demo: `make(seed)` produces data, `build(el, data, extra)` the chart.
@@ -181,6 +207,24 @@ export const demos = {
         valueLabel: 'Users',
         format: (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)),
         ariaLabel: 'Hexagonal world map of active users by location',
+        ...extra,
+      }),
+    ),
+  },
+  regions: {
+    title: 'Region map',
+    type: 'IsoRegionMap',
+    create: demo(5, 3301, revenueByCountry, (el, frames, extra) =>
+      new IsoRegionMap(el, {
+        regions: worldCountries(),
+        frames,
+        key: 'country',
+        value: 'revenue',
+        valueLabel: 'Revenue',
+        labels: 6,
+        arcs: regionArcs,
+        format: (v) => `$${v >= 100 ? v.toFixed(0) : v.toFixed(1)}M`,
+        ariaLabel: 'Extruded world map of revenue by country',
         ...extra,
       }),
     ),

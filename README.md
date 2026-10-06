@@ -2,11 +2,7 @@
 
 Isometric, animated, interactive charts for the web. Zero runtime dependencies, Canvas 2D.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/showcase-dark.png" />
-  <source media="(prefers-color-scheme: light)" srcset="docs/showcase-light.png" />
-  <img alt="plottwist charts: a hex world map with flowing arcs, 3D bars over time, stacked city blocks, a calendar heatmap and ribbon lines" src="docs/showcase-light.png" />
-</picture>
+<img alt="plottwist charts: a hex world map, an extruded region map, 3D bars over time, stacked city blocks, ribbon lines and a calendar heatmap" src="docs/showcase.png" />
 
 ```js
 import { IsoBarChart, IsoHexMap } from 'plottwist';
@@ -35,6 +31,8 @@ map.hexAt(-74, 40.7);   // the hex containing it
 - `IsoHeatmap`: extruded tiles on a sequential scale, e.g. a contribution calendar
 - `IsoRibbonChart`: one extruded ribbon per series, x along the floor
 - `IsoHexMap`: rounded hexagons over the world (or `bounds`), data binned by exact coordinates; arcs and callouts
+- `IsoRegionMap`: any GeoJSON regions extruded by value (a 3D choropleth); built-in world countries via
+  `import { worldCountries } from 'plottwist/geo/countries'`, joining data on ISO codes or names
 
 Grid charts get a value axis on back walls that follow the camera (`axis: false` to hide), a dashed
 level line from the hovered mark to the axis, value labels (`labels: true | N`) and a reference
@@ -56,8 +54,9 @@ new IsoBarChart(el, { data, theme: 'brand', grid: 'none', colors: { Online: '#7c
 
 ```sh
 npm run dev   # http://localhost:5173/examples/ with live reload
-npm run showcase             # re-render the README images (docs/showcase-*.png)
+npm run showcase             # re-render the README image (docs/showcase.png)
 node scripts/build-land.js   # regenerate src/geo/land.js from Natural Earth
+node scripts/build-countries.js  # regenerate src/geo/countries-data.js
 ```
 
 Land data: [Natural Earth](https://www.naturalearthdata.com/) (public domain) via
