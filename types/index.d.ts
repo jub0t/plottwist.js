@@ -240,6 +240,47 @@ export declare class IsoRibbonChart<D = any> extends GridChart<D, GridCell> {
   readonly options: IsoRibbonChartOptions<D>;
 }
 
+// ---- bar chart race -------------------------------------------------------------
+
+export interface RaceBar {
+  readonly key: string | number;
+  /** Current (interpolated) value. */
+  readonly value: number;
+  /** 0-based rank; Infinity when the value is 0. */
+  readonly rank: number;
+  readonly category: string | number;
+}
+
+export interface IsoRaceChartOptions<D> extends ChartOptions {
+  data?: D[];
+  frames?: Frame<D>[];
+  /** Entity name. Default 'name'. */
+  key?: Accessor<D, string | number>;
+  value?: Accessor<D, number>;
+  /** Colour by this category instead of by entity. */
+  color?: Accessor<D, string | number>;
+  /** How many bars stand in the row. Default 10. */
+  top?: number;
+  barWidth?: number;
+  /** Height of the leader, world units. Default 5. */
+  height?: number;
+  /** Fixed scale maximum (default: follows the leader). */
+  max?: number;
+  axis?: boolean;
+  format?: (value: number) => string;
+  valueLabel?: string;
+}
+
+export declare class IsoRaceChart<D = any> extends Chart<RaceBar> {
+  constructor(container: HTMLElement | string, options?: IsoRaceChartOptions<D>);
+  readonly options: IsoRaceChartOptions<D>;
+  readonly frameLabel: string | number | null;
+  /** The current top N, leader first. */
+  readonly standings: { key: string | number; value: number; rank: number }[];
+  setData(data: D[]): void;
+  setFrames(frames: Frame<D>[]): void;
+}
+
 // ---- maps ---------------------------------------------------------------------
 
 export type LonLat = [lon: number, lat: number];

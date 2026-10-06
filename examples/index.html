@@ -143,6 +143,15 @@
       </section>
 
       <section>
+        <h2>Bar chart race</h2>
+        <p>Monthly active users of fictional apps, 2010–2025. Ranks are recomputed every frame; colour follows genre.</p>
+        <div class="card">
+          <div class="stage"><div class="year" id="race-year"></div><div class="chart" id="race"></div></div>
+          <div class="controls" id="race-controls"></div>
+        </div>
+      </section>
+
+      <section>
         <h2>Bars over time</h2>
         <p>Monthly active users by region and platform, millions, 2018–2025.</p>
         <div class="card"><div class="stage"><div class="year" id="bars-year"></div><div class="chart" id="bars"></div></div><div class="controls" id="bars-controls"></div></div>
@@ -342,7 +351,7 @@ chart.setTheme('brand');</pre>
         window.regions = chart;
       }
 
-      for (const id of ['bars', 'stack']) {
+      for (const id of ['race', 'bars', 'stack']) {
         const { chart, shuffle } = create(id);
         const host = $(`${id}-controls`);
         player(chart, host, $(`${id}-year`));

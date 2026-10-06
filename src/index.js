@@ -1,6 +1,7 @@
 export { IsoBarChart } from './charts/IsoBarChart.js';
 export { IsoHeatmap } from './charts/IsoHeatmap.js';
 export { IsoRibbonChart } from './charts/IsoRibbonChart.js';
+export { IsoRaceChart } from './charts/IsoRaceChart.js';
 export { IsoHexMap } from './charts/IsoHexMap.js';
 export { IsoRegionMap } from './charts/IsoRegionMap.js';
 export { Chart, VIEWS } from './core/chart.js';

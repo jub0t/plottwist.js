@@ -1,6 +1,6 @@
 // Compile-only check that the public types describe real usage.
 // Run with: npm run test:types
-import { IsoBarChart, IsoHexMap, IsoRegionMap, registerTheme, scales, type Frame } from 'plottwist';
+import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, registerTheme, scales, type Frame } from 'plottwist';
 import { worldCountries } from 'plottwist/geo/countries';
 
 interface Row {
@@ -49,6 +49,15 @@ const regions = new IsoRegionMap<{ country: string; gdp: number }>('#regions', {
 });
 regions.resolve('DE');
 regions.on('click', (r) => r.feature.id);
+
+const race = new IsoRaceChart<{ name: string; users: number; genre: string }>('#race', {
+  frames: [{ label: 2025, data: [{ name: 'Kite', users: 179, genre: 'Social' }] }],
+  value: 'users',
+  color: 'genre',
+  top: 8,
+});
+race.standings[0]?.key;
+race.on('hover', (bar) => bar?.rank);
 
 registerTheme('brand', { extends: 'dark', series: ['#fff'] });
 const blue: string[] = scales.blue;

@@ -4,7 +4,7 @@
 // Each demo's create(el, options) builds its chart and returns
 // { chart, shuffle } where shuffle() swaps in a fresh random dataset.
 
-import { IsoBarChart, IsoHeatmap, IsoHexMap, IsoRegionMap, IsoRibbonChart } from '../src/index.js';
+import { IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart } from '../src/index.js';
 import { worldCountries } from '../src/geo/countries.js';
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -176,6 +176,39 @@ export const regionArcs = [
   ['USA', 'GBR'], ['GBR', 'IND'], ['CHN', 'JPN'], ['USA', 'BRA'], ['DEU', 'ZAF'], ['CHN', 'AUS'],
 ].map(([from, to]) => ({ from, to }));
 
+// ---- bar chart race --------------------------------------------------------------
+
+// Fictional apps; each grows on its own S-curve so the standings keep changing.
+const apps = [
+  ['Nimbus', 'Social'], ['Quill', 'Productivity'], ['Orbit', 'Social'], ['Pixel Forge', 'Games'],
+  ['Tandem', 'Productivity'], ['Echo', 'Social'], ['Lumen', 'Productivity'], ['Rift', 'Games'],
+  ['Harbor', 'Productivity'], ['Kite', 'Social'], ['Vault', 'Games'], ['Prism', 'Social'],
+  ['Atlas', 'Productivity'], ['Glyph', 'Games'],
+];
+
+function appUsers(seed) {
+  const r = rng(seed);
+  const curves = apps.map(([name, genre]) => ({
+    name,
+    genre,
+    peak: 40 + r() * 160,
+    mid: 2012 + r() * 12,
+    speed: 0.5 + r() * 0.9,
+    fade: r() < 0.3 ? 0.06 + r() * 0.1 : 0,
+  }));
+  return Array.from({ length: 16 }, (_, t) => {
+    const year = 2010 + t;
+    return {
+      label: year,
+      data: curves.map((c) => {
+        const s = 1 / (1 + Math.exp(-c.speed * (year - c.mid)));
+        const decline = c.fade ? Math.max(0.25, 1 - c.fade * Math.max(0, year - c.mid - 4)) : 1;
+        return { name: c.name, genre: c.genre, users: c.peak * s * decline * (0.95 + r() * 0.1) };
+      }),
+    };
+  });
+}
+
 // ---- demos ------------------------------------------------------------------------
 
 // Builds a demo: `make(seed)` produces data, `build(el, data, extra)` the chart.
@@ -225,6 +258,24 @@ export const demos = {
         arcs: regionArcs,
         format: (v) => `$${v >= 100 ? v.toFixed(0) : v.toFixed(1)}M`,
         ariaLabel: 'Extruded world map of revenue by country',
+        ...extra,
+      }),
+    ),
+  },
+  race: {
+    title: 'Bar chart race',
+    type: 'IsoRaceChart',
+    create: demo(9, 6151, appUsers, (el, frames, extra) =>
+      new IsoRaceChart(el, {
+        frames,
+        key: 'name',
+        value: 'users',
+        color: 'genre',
+        top: 8,
+        valueLabel: 'Users',
+        format: (v) => `${v.toFixed(0)}M`,
+        frameDuration: 900,
+        ariaLabel: 'Bar chart race of monthly active users by app over time',
         ...extra,
       }),
     ),
