@@ -73,8 +73,8 @@
         ['ribbon', PAD + (third + GAP) * 2, y + LABEL, third, 330],
       );
       y += LABEL + 330 + GAP;
-      layout.push(['calendar', PAD, y + LABEL, inner, 270]);
-      y += LABEL + 270;
+      layout.push(['race', PAD, y + LABEL, half, 300], ['calendar', PAD + half + GAP, y + LABEL, half, 300]);
+      y += LABEL + 300;
       const H = y + PAD;
 
       const charts = layout.map(([id, x, top, w, h]) => {
