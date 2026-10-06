@@ -5,17 +5,28 @@
   "type": "module",
   "main": "src/index.js",
   "exports": {
-    ".": "./src/index.js",
-    "./geo/countries": "./src/geo/countries.js"
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./geo/countries": {
+      "types": "./types/geo/countries.d.ts",
+      "import": "./src/geo/countries.js"
+    }
   },
   "files": [
-    "src"
+    "src",
+    "types",
+    "dist"
   ],
   "scripts": {
     "dev": "node scripts/dev-server.js",
     "showcase": "node scripts/build-showcase.js",
     "test": "node --test \"test/unit/*.test.js\"",
-    "test:visual": "node test/visual/run.js"
+    "test:visual": "node test/visual/run.js",
+    "test:types": "tsc -p test/types",
+    "build": "node scripts/build.js",
+    "prepublishOnly": "npm test && npm run test:types && npm run build"
   },
   "keywords": [
     "chart",
@@ -29,5 +40,13 @@
   "license": "Apache-2.0",
   "engines": {
     "node": ">=20.11"
-  }
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  },
+  "types": "./types/index.d.ts",
+  "unpkg": "dist/plottwist.iife.min.js",
+  "jsdelivr": "dist/plottwist.iife.min.js",
+  "sideEffects": false
 }

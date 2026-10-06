@@ -25,6 +25,24 @@ map.project(-74, 40.7); // screen position of a coordinate
 map.hexAt(-74, 40.7);   // the hex containing it
 ```
 
+## Install
+
+```sh
+npm install plottwist
+```
+
+Or without a build step:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/plottwist/dist/plottwist.iife.min.js"></script>
+<script>
+  new plottwist.IsoBarChart('#chart', { data });
+</script>
+```
+
+TypeScript types are included; charts are generic over your record type, so accessors like
+`x: 'region'` are checked against your data.
+
 ## Charts
 
 - `IsoBarChart`: grouped or stacked (`stack`) 3D bars on a categorical grid
@@ -54,6 +72,10 @@ new IsoBarChart(el, { data, theme: 'brand', grid: 'none', colors: { Online: '#7c
 
 ```sh
 npm run dev   # http://localhost:5173/examples/ with live reload
+npm test                     # unit tests
+npm run test:types           # type definitions against example usage
+npm run test:visual          # pixel comparison with test/visual/baseline (-- --update to accept)
+npm run build                # dist/ bundles
 npm run showcase             # re-render the README image (docs/showcase.png)
 node scripts/build-land.js   # regenerate src/geo/land.js from Natural Earth
 node scripts/build-countries.js  # regenerate src/geo/countries-data.js
