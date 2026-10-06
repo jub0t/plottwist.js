@@ -11,7 +11,7 @@
 import { Chart } from '../core/chart.js';
 import { Tween, ease } from '../core/animation.js';
 import { parseHex, rampAt, rgbString, sequentialStops, shade } from '../core/color.js';
-import { drawPrism } from '../core/shapes.js';
+import { faceBrightness } from '../core/shapes.js';
 import { accessor } from '../core/stage.js';
 
 const TAU = Math.PI * 2;
@@ -269,30 +269,38 @@ export class IsoHelixChart extends Chart {
     items.sort((u, v) => u.depth - v.depth);
     const headIndex = Math.floor(head);
     const floor = parseHex(theme.floor);
-    for (const { p, a, r1, z1 } of items) {
-      const a0 = a - half * 1.02;
-      const a1 = a + half * 1.02;
-      const r0 = this.radius;
-      const base = [
-        [Math.cos(a0) * r0, Math.sin(a0) * r0],
-        [Math.cos(a0) * r1, Math.sin(a0) * r1],
-        [Math.cos(a1) * r1, Math.sin(a1) * r1],
-        [Math.cos(a1) * r0, Math.sin(a1) * r0],
-      ];
+    // The coil is one continuous ribbon: each wedge's ends sit at the height
+    // of its neighbours', so there are no steps to catch the light.
+    const rise = this.step * this.turnHeight;
+    const reachOf = (q) => (q && q.index <= head + 1e-6 ? this.radius + Math.max(0.06, (q.value / this.maxValue) * this.reach * grow) : null);
+    for (const { p, a, r1 } of items) {
       const active = p === hovered || p === below;
       const isHead = this.timeline.playing && p.index === headIndex;
       const glow = isHead ? 1.35 : active ? 1.2 : 1;
       let rgb = this.colorFor(p.value);
       // Dim by darkening, not transparency: the coil overlaps itself.
       if (hovered && !active) rgb = mix(rgb, floor, 0.6 * this.focus.value);
-      const hits = drawPrism(C, R, theme, base, z1 - thick, z1, rgb, { glow });
+      const zc = this.baseZ(p);
+      const wedge = {
+        // a0 is later in the cycle (higher), a1 earlier (lower).
+        a0: a - half,
+        a1: a + half,
+        z0: zc + rise / 2,
+        z1: zc - rise / 2,
+        r0: this.radius,
+        r1,
+        // Ends show only where this wedge reaches past its neighbour.
+        n0: reachOf(this.points[p.index + 1]),
+        n1: reachOf(this.points[p.index - 1]),
+      };
+      const { hits, top } = this.drawWedge(wedge, thick, rgb, glow);
       if (active && this.focus.value > 0) {
         R.ctx.globalAlpha = this.focus.value;
-        R.polygon(base.map(([x, y]) => C.project(x, y, z1)), null, theme.text, 1.5);
+        R.polygon(top, null, theme.text, 1.5);
         R.ctx.globalAlpha = 1;
       }
       if (isHead && theme.glow > 0) {
-        const c = C.project(Math.cos(a) * r1, Math.sin(a) * r1, z1);
+        const c = C.project(Math.cos(a) * r1, Math.sin(a) * r1, zc + thick);
         R.glow(rgb, c.x, c.y, 60, 40, theme.glow);
       }
       R.hit(hits, p);
@@ -315,6 +323,37 @@ export class IsoHelixChart extends Chart {
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
     }
+  }
+
+  // One wedge of the ribbon: a sloped annular sector `thick` deep. Sides are
+  // lit like any face; exposed ends take the outer face's shade, so turning
+  // the camera never flips them dark.
+  drawWedge({ a0, a1, z0, z1, r0, r1, n0, n1 }, thick, rgb, glow) {
+    const { camera: C, renderer: R, theme } = this;
+    const P = (r, a, z) => C.project(Math.cos(a) * r, Math.sin(a) * r, z);
+    const hits = [];
+    const face = (pts, k) => {
+      const fill = shade(rgb, k);
+      R.polygon(pts, fill, fill, 0.6);
+      hits.push(pts);
+    };
+    const am = (a0 + a1) / 2;
+    const outerK = faceBrightness(C, theme, [Math.cos(am), Math.sin(am), 0], glow);
+    // Exposed end at a0: from the neighbour's reach (or the inner edge) out.
+    const end = (a, z, from, normal) => {
+      if (from != null && from >= r1 - 1e-6) return;
+      const lo = from == null ? r0 : Math.max(r0, from);
+      if (!C.faces(...normal)) return;
+      face([P(lo, a, z), P(r1, a, z), P(r1, a, z + thick), P(lo, a, z + thick)], outerK * 0.94);
+    };
+    end(a0, z0, n0, [Math.sin(a0), -Math.cos(a0), 0]);
+    end(a1, z1, n1, [-Math.sin(a1), Math.cos(a1), 0]);
+    const inner = [-Math.cos(am), -Math.sin(am), 0];
+    if (C.faces(...inner)) face([P(r0, a0, z0), P(r0, a1, z1), P(r0, a1, z1 + thick), P(r0, a0, z0 + thick)], faceBrightness(C, theme, inner, glow));
+    if (C.faces(Math.cos(am), Math.sin(am), 0)) face([P(r1, a0, z0), P(r1, a1, z1), P(r1, a1, z1 + thick), P(r1, a0, z0 + thick)], outerK);
+    const top = [P(r0, a0, z0 + thick), P(r1, a0, z0 + thick), P(r1, a1, z1 + thick), P(r0, a1, z1 + thick)];
+    face(top, faceBrightness(C, theme, [0, 0, 1], glow) * (1 + 0.1 * theme.gradient));
+    return { hits, top };
   }
 
   // Each cycle's label where it begins, on the inside of the coil.
