@@ -295,7 +295,7 @@ chart.setTheme('brand');</pre>
         scrub.setAttribute('aria-label', 'Timeline');
         const label = el('span', { className: 'frame' });
         const sync = () => {
-          scrub.max = chart.frames.length - 1;
+          scrub.max = chart.timeline.length - 1;
           scrub.value = chart.timeline.position;
           label.textContent = chart.frameLabel ?? '';
           if (yearEl) yearEl.textContent = chart.frameLabel ?? '';
@@ -389,7 +389,7 @@ chart.setTheme('brand');</pre>
           chart.options.colorScale = v === 'theme' ? undefined : v;
           chart.invalidate();
         });
-        const arcsBtn = button('Hide arcs', () => {
+        const arcsBtn = button('Show arcs', () => {
           const on = !chart.options.arcs;
           chart.reconfigure({ arcs: on ? mapArcs : null });
           arcsBtn.textContent = on ? 'Hide arcs' : 'Show arcs';
@@ -403,7 +403,7 @@ chart.setTheme('brand');</pre>
         const host = $('regions-controls');
         player(chart, host, $('regions-year'));
         views(chart, host);
-        const arcsBtn = button('Hide arcs', () => {
+        const arcsBtn = button('Show arcs', () => {
           const on = !chart.options.arcs;
           chart.reconfigure({ arcs: on ? regionArcs : null });
           arcsBtn.textContent = on ? 'Hide arcs' : 'Show arcs';
