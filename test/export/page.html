@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>plottwist export cases</title>
+    <style>
+      body { margin: 0; background: #07070b; }
+      .case { position: absolute; left: 0; top: 0; width: 640px; height: 400px; }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      // Driven by test/export/run.js and scripts/build-clips.js: builds a demo
+      // chart, exports it, and checks the result decodes in this browser.
+      import { demos } from '../../examples/demos.js';
+
+      const base64 = async (blob) => {
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        let s = '';
+        for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        return btoa(s);
+      };
+
+      // Decode the exported file with the browser's own decoders.
+      async function inspect(blob) {
+        if (blob.type === 'image/gif' || blob.type === 'image/png') {
+          const dec = new ImageDecoder({ data: blob.stream(), type: blob.type });
+          await dec.tracks.ready;
+          await dec.completed;
+          const { image } = await dec.decode({ frameIndex: 0 });
+          const out = { frames: dec.tracks.selectedTrack.frameCount, width: image.displayWidth, height: image.displayHeight };
+          image.close();
+          return out;
+        }
+        const video = document.createElement('video');
+        video.muted = true;
+        video.src = URL.createObjectURL(blob);
+        await new Promise((r, j) => ((video.onloadedmetadata = r), (video.onerror = () => j(new Error('video failed to load')))));
+        video.currentTime = video.duration / 2;
+        await new Promise((r) => (video.onseeked = r));
+        const c = document.createElement('canvas');
+        c.width = video.videoWidth;
+        c.height = video.videoHeight;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        const px = ctx.getImageData(0, 0, c.width, c.height).data;
+        let lit = 0;
+        for (let i = 0; i < px.length; i += 4) if (px[i] + px[i + 1] + px[i + 2] > 120) lit++;
+        return { duration: video.duration, width: video.videoWidth, height: video.videoHeight, lit: lit / (px.length / 4) };
+      }
+
+      window.exportCase = async (demo, options, { check = true, chartOptions = {} } = {}) => {
+        await document.fonts.ready;
+        const el = Object.assign(document.createElement('div'), { className: 'case' });
+        document.body.append(el);
+        const { chart } = demos[demo].create(el, chartOptions);
+        const t0 = performance.now();
+        try {
+          const before = { w: chart.renderer.width, h: chart.renderer.height, pos: chart.timeline.position, yaw: chart.view.yaw.value };
+          const blob = await chart.export(options);
+          const ms = performance.now() - t0;
+          // The chart must be left exactly as it was, and keep animating.
+          const after = { w: chart.renderer.width, h: chart.renderer.height, pos: chart.timeline.position, yaw: chart.view.yaw.value };
+          if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error(`chart not restored: ${JSON.stringify({ before, after })}`);
+          if (chart._exporting || chart._clock != null || chart._raf == null) throw new Error('chart loop not resumed after export');
+          window.lastData = await base64(blob);
+          return { type: blob.type, size: blob.size, ms, info: check ? await inspect(blob) : null, chars: window.lastData.length };
+        } finally {
+          chart.destroy();
+          el.remove();
+        }
+      };
+      // An aborted export rejects and leaves the chart usable.
+      window.abortCase = async () => {
+        const el = Object.assign(document.createElement('div'), { className: 'case' });
+        document.body.append(el);
+        const { chart } = demos.race.create(el, {});
+        const ac = new AbortController();
+        try {
+          await chart.export({ format: 'gif', duration: 5000, onProgress: (f) => f > 0.2 && ac.abort(), signal: ac.signal });
+          return 'not aborted';
+        } catch (e) {
+          if (e.name !== 'AbortError') return `wrong error: ${e.message}`;
+          return chart._exporting ? 'still exporting' : 'ok';
+        } finally {
+          chart.destroy();
+          el.remove();
+        }
+      };
+      window.ready = true;
+    </script>
+  </body>
+</html>

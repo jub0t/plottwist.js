@@ -72,7 +72,7 @@ export class IsoRaceChart extends Chart {
 
     this.timeline.length = this.frames.length;
     this.timeline.seek(Math.min(this.timeline.position, this.frames.length - 1));
-    if (first) this.intro.to(1, performance.now(), { duration: 1200, easing: ease.cubicOut });
+    if (first) this.intro.to(1, this.now(), { duration: 1200, easing: ease.cubicOut });
     this._last = null;
     this.invalidate();
   }
@@ -136,7 +136,7 @@ export class IsoRaceChart extends Chart {
   }
 
   onHoverChange(bar) {
-    const now = performance.now();
+    const now = this.now();
     for (const b of this.bars.values()) b.lift.to(b === bar ? 1 : 0, now, { duration: 200 });
     this.focus.to(bar ? 1 : 0, now, { duration: 200 });
   }

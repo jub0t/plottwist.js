@@ -162,7 +162,7 @@ export class GeoChart extends Chart {
     this.maxValue = this.options.max ?? (max || 1);
     this.maxHeight = this.options.height ?? this.mapWidth * (this.heightRatio ?? 0.12);
 
-    const now = performance.now();
+    const now = this.now();
     const keys = new Set(this.frames.flatMap((f) => [...f.values.keys()]));
     for (const [key, item] of this.items) if (!keys.has(key)) item.leaving = true;
     for (const key of keys) {
@@ -229,7 +229,7 @@ export class GeoChart extends Chart {
   }
 
   onHoverChange(item) {
-    const now = performance.now();
+    const now = this.now();
     for (const it of this.items.values()) it.lift.to(it === item ? 1 : 0, now, { duration: 200 });
     this.focus.to(item ? 1 : 0, now, { duration: 200 });
   }
@@ -275,7 +275,7 @@ export class GeoChart extends Chart {
     const { camera: C, theme } = this;
     const ctx = R.ctx;
     const intro = this.intro.value;
-    const time = performance.now() / 1000;
+    const time = this.now() / 1000;
 
     this.options.arcs.forEach((arc, i) => {
       const from = this.pointOf(arc.from);

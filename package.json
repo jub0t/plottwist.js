@@ -30,7 +30,8 @@
     "test:visual": "node test/visual/run.js",
     "test:types": "tsc -p test/types",
     "build": "node scripts/build.js",
-    "prepublishOnly": "npm test && npm run test:types && npm run build"
+    "prepublishOnly": "npm test && npm run test:types && npm run build",
+    "test:export": "node test/export/run.js"
   },
   "keywords": [
     "chart",

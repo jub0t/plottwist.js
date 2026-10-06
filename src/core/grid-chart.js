@@ -152,7 +152,7 @@ export class GridChart extends Chart {
     this.timeline.length = this.frames.length;
     this.timeline.seek(Math.min(this.timeline.position, this.frames.length - 1));
 
-    const now = performance.now();
+    const now = this.now();
     for (const cell of this.cells.values()) {
       cell.from.set(cell.value);
       cell.blend.set(0);
@@ -225,7 +225,7 @@ export class GridChart extends Chart {
   }
 
   onHoverChange(datum) {
-    const now = performance.now();
+    const now = this.now();
     const hovered = this.cellOf(datum);
     for (const c of this.cells.values()) c.lift.to(c === hovered ? 1 : 0, now, { duration: 220 });
     this.focus.to(datum ? 1 : 0, now, { duration: 220 });

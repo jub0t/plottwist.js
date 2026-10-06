@@ -88,6 +88,19 @@ map.on('click', (region) => map.drill(statesOf(region), { key: 'state', data: st
 `borderColor`, `edgeWidth` and `edgeColor` style the strokes. `topojsonFeatures(topology, object)`
 converts TopoJSON for other uses.
 
+## Video, GIF and PNG export
+
+```js
+const mp4 = await chart.export({ format: 'mp4' });            // one pass through the frames
+const gif = await chart.export({ format: 'gif', width: 640 }); // smaller, loops anywhere
+const spin = await map.export({ format: 'webm', orbit: 1, duration: 8000 });
+const png = await chart.export({ format: 'png' });            // transparent still
+```
+
+Export steps the chart on its own clock, so every clip is frame-exact regardless of machine speed.
+Video is encoded with WebCodecs and muxed in the library (falling back to `MediaRecorder` where
+WebCodecs is missing); the encoders load only on first use.
+
 ## Theming
 
 Canvases are transparent: the page owns the background. Presets are `midnight` (default) and `dark`.
@@ -104,6 +117,7 @@ npm run dev   # http://localhost:5173/examples/ with live reload
 npm test                     # unit tests
 npm run test:types           # type definitions against example usage
 npm run test:visual          # pixel comparison with test/visual/baseline (-- --update to accept)
+npm run test:export          # export every format and check it decodes (uses ffprobe if installed)
 npm run build                # dist/ bundles
 npm run showcase             # re-render the README image (docs/showcase.png)
 node scripts/build-land.js   # regenerate src/geo/land.js from Natural Earth

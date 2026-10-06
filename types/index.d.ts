@@ -122,7 +122,41 @@ export declare class Chart<H = unknown> {
   resetView(): void;
   /** Request a redraw on the next frame. */
   invalidate(): void;
+  /** The chart's clock in ms: real time, or the synthetic clock during export(). */
+  now(): number;
+  /**
+   * Render the chart to a file. Frames are stepped on a synthetic clock, so
+   * clips are frame-exact and identical between runs. Video uses WebCodecs
+   * (falling back to real-time MediaRecorder); GIF and PNG are encoded here.
+   */
+  export(options?: ExportOptions): Promise<Blob>;
   destroy(): void;
+}
+
+export interface ExportOptions {
+  /** Default 'mp4' (H.264). 'webm' is VP9. 'png' is a single transparent frame. */
+  format?: 'mp4' | 'webm' | 'gif' | 'png';
+  /** Clip length in ms. Default: one pass through the frames (plus a 1s hold when not looping), else 3s (6s with orbit). */
+  duration?: number;
+  /** Frames per second. Default 30 (20 for GIF). */
+  fps?: number;
+  /** Output size in CSS pixels. Default: the chart's current size. Height follows the aspect ratio if omitted. */
+  width?: number;
+  height?: number;
+  /** Device pixels per CSS pixel. Default: devicePixelRatio, or 1 when width/height are given. */
+  pixelRatio?: number;
+  /** Fill behind the chart. Default: the theme background, or a dark/light fill for video and GIF. */
+  background?: string;
+  /** Timeline position to start from. Default 0. */
+  from?: number;
+  /** Set false to hold the timeline still (e.g. with orbit). Default true. */
+  play?: boolean;
+  /** Full camera turns over the clip, e.g. 1 for a complete orbit. Default 0. */
+  orbit?: number;
+  /** Called with the fraction of frames rendered, 0..1. */
+  onProgress?: (fraction: number) => void;
+  /** Abort a running export. */
+  signal?: AbortSignal;
 }
 
 // ---- grid charts --------------------------------------------------------------

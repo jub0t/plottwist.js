@@ -103,11 +103,24 @@ export class Chart {
     return this.timeline.playing;
   }
 
+  // The chart's clock. Real time normally; during export() it is a synthetic
+  // clock stepped one video frame at a time, so every animation is exact.
+  now() {
+    return this._clock ?? performance.now();
+  }
+
+  // Render the chart to a video, GIF or PNG Blob. The encoders load on first
+  // use, so charts that never export don't pay for them.
+  async export(options) {
+    const { exportChart } = await import('../export/index.js');
+    return exportChart(this, options);
+  }
+
   // Animate to a named preset (see VIEWS) or an explicit { yaw, pitch, zoom }.
   setView(view, { duration = 900 } = {}) {
     const target = typeof view === 'string' ? VIEWS[view] : view;
     if (!target) throw new Error(`plottwist: unknown view "${view}"`);
-    const now = performance.now();
+    const now = this.now();
     const opts = { duration, easing: ease.cubicInOut };
     if (target.yaw !== undefined) {
       // Turn the short way round rather than unwinding accumulated spins.
@@ -145,6 +158,7 @@ export class Chart {
   }
 
   _schedule() {
+    if (this._exporting) return; // export() drives frames itself
     this._raf ??= requestAnimationFrame((now) => this._frame(now));
   }
 
@@ -306,7 +320,7 @@ export class Chart {
 
     const onKey = (e) => {
       const step = Math.PI / 12;
-      const now = performance.now();
+      const now = this.now();
       const opts = { duration: 350 };
       if (e.key === 'ArrowLeft') this.view.yaw.to(this.view.yaw.target + step, now, opts);
       else if (e.key === 'ArrowRight') this.view.yaw.to(this.view.yaw.target - step, now, opts);

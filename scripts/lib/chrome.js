@@ -106,9 +106,18 @@ export async function launch({ width = 1200, height = 900, scale = 2 } = {}) {
       throw new Error(`timed out waiting for ${ready} on ${url}`);
     };
 
+    // Fetch a long string held in page global `name` in pieces; DevTools
+    // stalls on single messages of several megabytes.
+    const readString = async (name, length, size = 1 << 20) => {
+      let out = '';
+      for (let i = 0; i < length; i += size) out += await evaluate(`${name}.slice(${i}, ${i + size})`);
+      return out;
+    };
+
     return {
       open,
       evaluate,
+      readString,
       close: async () => {
         ws.close();
         await close();

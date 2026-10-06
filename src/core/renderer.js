@@ -26,6 +26,7 @@ export class Renderer {
     this.fontMono = 'ui-monospace, monospace';
 
     this._observer = new ResizeObserver(() => {
+      if (this.fixed) return; // pinned to an export size
       this.resize();
       onResize?.(this.width, this.height);
     });
@@ -33,9 +34,9 @@ export class Renderer {
     this.resize();
   }
 
-  resize() {
-    const { width, height } = this.container.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+  // Size to the container, or to an explicit CSS size and pixel ratio.
+  resize(width, height, dpr = window.devicePixelRatio || 1) {
+    if (width === undefined) ({ width, height } = this.container.getBoundingClientRect());
     this.width = width;
     this.height = height;
     this.canvas.width = Math.round(width * dpr);

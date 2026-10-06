@@ -82,3 +82,13 @@ registerTheme('brand', { extends: 'dark', series: ['#fff'] });
 const blue: string[] = scales.blue;
 
 export { hex, coord, blue };
+
+// Export options are checked.
+async function exportUsage(chart: IsoBarChart<{ region: string; platform: string; users: number }>) {
+  const blob: Blob = await chart.export({ format: 'gif', width: 640, fps: 15, onProgress: (f: number) => f });
+  await chart.export({ format: 'webm', orbit: 1, signal: new AbortController().signal });
+  // @ts-expect-error unknown format
+  await chart.export({ format: 'avi' });
+  return blob;
+}
+export { exportUsage };
