@@ -23,22 +23,32 @@
       // backgrounds, so: no additive glow (it turns into solid blobs with
       // nothing behind it) and mid-grey page text that reads on both.
       const INK = '#7c7b95';
+      // Surfaces are very light tints of the midnight base purple (#8b5cf6),
+      // so the charts read as light objects on either page colour.
       registerTheme('preview', {
         extends: 'midnight',
+        mode: 'light', // sequential scales run pale -> deep
         glow: 0,
         pool: 0,
         text: INK,
         textMuted: INK,
-        // Labels on marks sit on the chart's own dark surfaces: keep them light.
-        markText: '#f4f3ff',
-        markHalo: '#07070b',
+        floor: '#f1edfe',
+        wall: 'rgba(241, 237, 254, 0.92)',
+        grid: '#d8cefb',
+        land: '#dcd2fc',
+        highlight: '#e2d8fd',
+        surface: '#ffffff',
+        tooltip: 'rgba(255, 255, 255, 0.96)',
+        tooltipBorder: '#d8cefb',
+        // Labels on marks now sit on light surfaces: dark ink, white halo.
+        markText: '#2b2156',
+        markHalo: 'rgba(255, 255, 255, 0.9)',
       });
 
       // Per-chart tweaks for the preview.
       const previewOptions = {
         map: { arcs: null },
-        // Visible borders: the default is the (now transparent) page colour.
-        regions: { arcs: null, borderColor: '#2c2b4a' },
+        regions: { arcs: null, borderColor: '#ffffff' },
         // Nearly face-on so the year runs across the full width.
         calendar: { camera: { yaw: 0.06, pitch: 0.95 } },
       };
