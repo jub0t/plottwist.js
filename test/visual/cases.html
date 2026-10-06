@@ -14,7 +14,7 @@
       // builds a demo chart, settles it deterministically, optionally hovers
       // or moves the camera, and exposes its pixels for comparison.
       import { registerTheme } from '../../src/index.js';
-      import { demos } from '../../examples/demos.js';
+      import { demos, peaksAndPits } from '../../examples/demos.js';
 
       // Local fonts only, so results don't depend on the network.
       registerTheme('test', { extends: 'midnight', font: 'Arial, sans-serif', fontMono: '"Courier New", monospace' });
@@ -58,6 +58,10 @@
           }),
         },
         surface: { demo: 'surface' },
+        'surface-glossy': { demo: 'surface', options: { preset: 'glossy' }, pits: true },
+        'surface-pastel': { demo: 'surface', options: { preset: 'pastel', cut: { below: -8 } }, pits: true },
+        'surface-voxel': { demo: 'surface', options: { preset: 'voxel' } },
+        'surface-magma': { demo: 'surface', options: { preset: 'magma' }, pits: true },
         'surface-relief': { demo: 'surface', options: { colorScale: 'terrain', shadows: true, contourLabels: true } },
         'surface-water': { demo: 'surface', options: { water: { value: 35, label: 'Dead zone' }, peaks: 3 } },
         'surface-topo': { demo: 'surface', options: { bands: true, contours: 10, colorScale: 'emerald' } },
@@ -114,6 +118,12 @@
         const el = Object.assign(document.createElement('div'), { className: 'case' });
         document.body.append(el);
         const { chart } = demos[spec.demo].create(el, { theme: 'test', ...spec.options });
+        // Signed data for the surface cases that show pits.
+        if (spec.pits) {
+          chart.format = (v) => v.toFixed(0);
+          chart.reconfigure({ xTicks: () => null, yTicks: () => null });
+          chart.setFrames(peaksAndPits().map((f) => ({ label: f.label, data: f.data.map((d) => ({ x: d.x, y: d.y, quality: d.error })) })));
+        }
         chart.visible = true;
         if (chart.frames?.length > 1) chart.seek(chart.frames.length - 1);
         settle(chart, 260);

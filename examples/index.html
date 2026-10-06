@@ -223,10 +223,12 @@
 
       <section>
         <h2>Terrain surface</h2>
-        <p>Wi-Fi signal quality across a 36 × 24 m office floor through the day, sample data. Contour lines follow the value axis; hover to probe a point.</p>
+        <p>Wi-Fi signal quality across a 36 × 24 m office floor through the day, or a field of peaks and pits around zero; sample data. Presets are bundles of options (lighting, palette, mesh, style); the knobs adjust the lighting live. Hover to probe a point.</p>
         <div class="card">
           <div class="stage"><div class="year" id="surface-year"></div><div class="chart" id="surface"></div></div>
           <div class="controls" id="surface-controls"></div>
+          <div class="controls" id="surface-controls-2"></div>
+          <div class="controls" id="surface-controls-3"></div>
         </div>
       </section>
 
@@ -281,8 +283,8 @@ chart.setTheme('brand');</pre>
     </main>
 
     <script type="module">
-      import { themes, scales } from '../src/index.js';
-      import { demos, mapArcs, regionArcs } from './demos.js';
+      import { themes, scales, SURFACE_PRESETS } from '../src/index.js';
+      import { demos, mapArcs, regionArcs, peaksAndPits } from './demos.js';
 
       // ---- helpers ------------------------------------------------------------
 
@@ -574,24 +576,60 @@ chart.setTheme('brand');</pre>
       {
         const { chart, shuffle } = create('surface');
         const host = $('surface-controls');
+        const host2 = $('surface-controls-2');
+        const host3 = $('surface-controls-3');
         player(chart, host, $('surface-year'));
-        // Each style is a handful of options on the same chart.
-        const styles = {
-          solid: {},
-          relief: { colorScale: 'terrain', shadows: true, contourLabels: true },
-          topo: { bands: true, contours: 10, colorScale: 'emerald' },
-          wireframe: { style: 'wireframe', contours: false },
-          water: { water: { value: 35, label: 'Dead zone' }, peaks: 3 },
-          floating: { float: 2.4, axis: false, bands: 7 },
-          slope: { colorBy: 'slope', colorScale: 'orange', mesh: true },
+
+        // Data: the office signal, or a field of peaks and pits around zero.
+        const signal = { format: chart.format, valueLabel: chart.options.valueLabel, xTicks: chart.options.xTicks, yTicks: chart.options.yTicks };
+        const data = el('select', { ariaLabel: 'Data' });
+        data.append(el('option', { value: 'signal', textContent: 'Office signal' }), el('option', { value: 'pits', textContent: 'Peaks & pits' }));
+        data.onchange = () => {
+          if (data.value === 'pits') {
+            chart.format = (v) => `${v > 0 ? '+' : ''}${v.toFixed(0)}`;
+            chart.reconfigure({ valueLabel: 'Error', xTicks: () => null, yTicks: () => null, water: undefined });
+            chart.setFrames(peaksAndPits().map((f) => ({ label: f.label, data: f.data.map((d) => ({ x: d.x, y: d.y, quality: d.error })) })));
+          } else {
+            chart.format = signal.format;
+            chart.reconfigure({ valueLabel: signal.valueLabel, xTicks: signal.xTicks, yTicks: signal.yTicks });
+            shuffle();
+          }
         };
-        const reset = Object.fromEntries(
-          [...new Set(Object.values(styles).flatMap(Object.keys))].map((k) => [k, undefined]),
-        );
-        segmented(host, Object.keys(styles), (name) => {
-          chart.reconfigure({ ...reset, ...styles[name] });
+        host.append(data, button('Shuffle', () => (data.value === 'signal' ? shuffle() : null)));
+
+        // Presets are named bundles of options (SURFACE_PRESETS).
+        const presets = ['solid', ...Object.keys(SURFACE_PRESETS), 'water'];
+        segmented(host2, presets, (name) => {
+          chart.reconfigure({
+            preset: name === 'water' || name === 'solid' ? null : name,
+            water: name === 'water' ? { value: data.value === 'pits' ? 0 : 35, label: data.value === 'pits' ? 'Zero' : 'Dead zone' } : undefined,
+            peaks: name === 'water' ? 3 : undefined,
+          });
         });
-        host.append(button('Shuffle', shuffle));
+
+        // Look knobs change options in place: no rebuild, just a redraw.
+        const knob = (label, min, max, step, value, apply) => {
+          const input = el('input', { type: 'range', min, max, step, value });
+          input.oninput = () => {
+            apply(+input.value);
+            chart.invalidate();
+          };
+          const wrap = el('label', { className: 'knob', textContent: label });
+          wrap.append(input);
+          host3.append(wrap);
+        };
+        const light = (k, v) => (chart.options.lighting = { ...chart.options.lighting, [k]: v });
+        knob('Gloss', 0, 1, 0.01, 0.22, (v) => light('specular', v));
+        knob('Shine', 4, 80, 1, 28, (v) => light('shininess', v));
+        knob('Rim', 0, 1, 0.01, 0, (v) => light('rim', v));
+        knob('Height', 1, 12, 0.1, chart.maxHeight, (v) => chart.reconfigure({ height: v }));
+        const mesh = el('select', { ariaLabel: 'Mesh' });
+        for (const m of ['no mesh', 'quads', 'triangles']) mesh.append(el('option', { value: m, textContent: m }));
+        mesh.onchange = () => {
+          chart.options.mesh = mesh.value === 'no mesh' ? false : mesh.value;
+          chart.invalidate();
+        };
+        host3.append(mesh);
       }
 
       {

@@ -66,7 +66,9 @@ export interface Theme {
 export type ThemeName = 'midnight' | 'dark' | (string & {});
 export type ThemeInput = ThemeName | (Partial<Theme> & { extends?: ThemeName });
 /** 'terrain' is a natural ramp from green lowlands to pale peaks and never reverses on dark themes. */
-export type ScaleName = 'violet' | 'blue' | 'emerald' | 'orange' | 'magenta' | 'teal' | 'terrain';
+export type ScaleName =
+  | 'violet' | 'blue' | 'emerald' | 'orange' | 'magenta' | 'teal'
+  | 'terrain' | 'viridis' | 'magma' | 'turbo' | 'aurora' | 'ocean';
 
 export interface TooltipRow {
   label: string;
@@ -211,6 +213,8 @@ export interface GridChartOptions<D> extends ChartOptions {
   axis?: boolean | AxisOptions;
   /** Floor grid style; overrides the theme. */
   grid?: 'lines' | 'dots' | 'none';
+  /** Draw the floor slab. Default true. */
+  floor?: boolean;
 }
 
 /** One cell of a grid chart. */
@@ -334,6 +338,29 @@ export declare class IsoRaceChart<D = any> extends Chart<RaceBar> {
 
 // ---- surface ----------------------------------------------------------------------
 
+export type SurfacePreset = 'relief' | 'topo' | 'glossy' | 'magma' | 'pastel' | 'voxel' | 'wireframe' | 'floating';
+
+export interface SurfaceLighting {
+  /** Base light. Default: the theme's. */
+  ambient?: number;
+  /** Directional light. Default: the theme's. */
+  diffuse?: number;
+  /** Glossy highlight strength, 0..1. Default 0.22. */
+  specular?: number;
+  /** Highlight tightness. Default 28. */
+  shininess?: number;
+  /** Light catching the silhouette, 0..1. Default 0. */
+  rim?: number;
+  rimColor?: string;
+  /** Degrees relative to the view: 0 behind the scene, -90 from the left, 90 from the right. Default -140. */
+  azimuth?: number;
+  /** Degrees above the horizon. Default 49. */
+  elevation?: number;
+}
+
+/** The option bundles behind `preset`. */
+export declare const SURFACE_PRESETS: Record<SurfacePreset, Partial<IsoSurfaceOptions<any>>>;
+
 export interface WaterLevel {
   value: number;
   label?: string;
@@ -347,19 +374,38 @@ export interface IsoSurfaceOptions<D> extends IsoHeatmapOptions<D> {
   contours?: number | number[] | false;
   contourColor?: string;
   contourWidth?: number;
-  /** Draw the grid mesh over the surface. Default false. */
-  mesh?: boolean;
+  /** Mesh lines over the surface: true/'quads', 'triangles', or only along 'x' or 'y'. Default none. */
+  mesh?: boolean | 'quads' | 'triangles' | 'x' | 'y';
   meshColor?: string;
+  /** Mesh rows per line. Default: one line per data cell (every row for triangles). */
+  meshStep?: number;
+  /** Default 0.4 (1 for wireframe). */
+  meshOpacity?: number;
+  meshWidth?: number;
+  /** A named look: options it sets can be overridden alongside. See SURFACE_PRESETS. */
+  preset?: SurfacePreset | null;
+  /** Lighting: diffuse, glossy highlights, rim light and the light's direction relative to the view. */
+  lighting?: SurfaceLighting;
+  /** Cut away the surface where the value is below or above these, with crisp edges. */
+  cut?: { below?: number; above?: number };
+  /** Surface opacity, 0..1. Default 1. */
+  opacity?: number;
+  /** For style: 'voxel'. */
+  voxel?: { step?: number; resolution?: number; gap?: number };
+  /** Side walls: 'strata' (a gradient through the colour bands) or 'flat'. Default 'strata'. */
+  skirtStyle?: 'strata' | 'flat';
+  /** Lower end of the value domain (values below zero are kept on surfaces). */
+  min?: number;
   /** Bicubic subdivision factor, 1-6. Default: 3 for small grids, 2 for medium, 1 for large. */
   smooth?: number;
   /** 'smooth' averages lighting across vertices; 'flat' lights each facet. Default 'smooth'. */
   shading?: 'smooth' | 'flat';
   /** What the colour ramp follows. Default 'height'. */
-  colorBy?: 'height' | 'slope';
+  colorBy?: 'height' | 'slope' | 'x' | 'y';
   /** Stepped colours: true for bands between contour levels, or a number of equal bands. */
   bands?: boolean | number;
-  /** 'wireframe' draws a hidden-line mesh instead of a lit surface. Default 'solid'. */
-  style?: 'solid' | 'wireframe';
+  /** 'wireframe': a hidden-line mesh; 'voxel': columns stepped into terraces. Default 'solid'. */
+  style?: 'solid' | 'wireframe' | 'voxel';
   /** Lift the terrain by this many world units and project a colour map onto the floor. */
   float?: number;
   /** A level that floods everything below it. */

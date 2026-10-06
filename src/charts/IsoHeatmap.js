@@ -35,7 +35,7 @@ export class IsoHeatmap extends GridChart {
   }
 
   colorFor(value) {
-    return rampAt(this.stops, value / this.maxValue);
+    return rampAt(this.stops, (value - this.minValue) / (this.maxValue - this.minValue));
   }
 
   markColor(cell) {
@@ -60,7 +60,7 @@ export class IsoHeatmap extends GridChart {
       };
       const glow = 1 + 0.12 * cell.lift.value;
       // Only the hottest cells bloom, so the glow itself encodes intensity.
-      const t = cell.total / this.maxValue;
+      const t = (cell.total - this.minValue) / (this.maxValue - this.minValue);
       const bloom = t > 0.45 || cell.lift.value > 0 ? theme.glow * (t * t * 0.8 + 0.5 * cell.lift.value) : 0;
       R.hit(drawBox(C, R, theme, box, this.colorFor(cell.total), { glow, bloom }), cell);
     }
@@ -83,7 +83,7 @@ export class IsoHeatmap extends GridChart {
 
     const hovered = this.hovered;
     if (hovered) {
-      const t = Math.min(1, hovered.total / this.maxValue);
+      const t = Math.min(1, (hovered.total - this.minValue) / (this.maxValue - this.minValue));
       ctx.fillStyle = theme.text;
       ctx.beginPath();
       ctx.moveTo(x + t * width, y - 2);
@@ -92,7 +92,7 @@ export class IsoHeatmap extends GridChart {
       ctx.fill();
     }
     const label = { color: theme.textMuted, size: 11, mono: true };
-    R.text(this.format(0), x, y + 20, { ...label, align: 'left' });
+    R.text(this.format(this.minValue), x, y + 20, { ...label, align: 'left' });
     R.text(this.format(this.maxValue), x + width, y + 20, { ...label, align: 'right' });
   }
 

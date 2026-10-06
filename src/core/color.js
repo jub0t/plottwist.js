@@ -23,7 +23,21 @@ export const scales = {
   // lowlands through olive and sand to pale summits. Already dark-low and
   // light-high, so it never reverses.
   terrain: ['#24493d', '#3e6b4f', '#6f8f5c', '#a7a874', '#cdbb8f', '#e6d9bd', '#f6f1e6'],
+  // Multi-hue ramps, low -> high. They run dark to light already (or are
+  // built to read either way), so they never reverse.
+  // Viridis and magma (matplotlib, CC0): perceptually uniform.
+  viridis: ['#440154', '#482878', '#3e4989', '#31688e', '#26828e', '#1f9e89', '#35b779', '#6ece58', '#b5de2b', '#fde725'],
+  magma: ['#000004', '#1c1044', '#4f127b', '#812581', '#b5367a', '#e55064', '#fb8761', '#fec287', '#fcfdbf'],
+  // Turbo (Google, Apache-2.0): a smooth, lightness-balanced rainbow.
+  turbo: ['#30123b', '#4662d7', '#36aaf9', '#1ae4b6', '#72fe5e', '#c8ef34', '#faba39', '#f66b19', '#ca2a04', '#7a0403'],
+  // Aurora: pastel indigo through pink to mint, from the midnight purple.
+  aurora: ['#3b2a8f', '#5b5bd6', '#8b5cf6', '#d06fd8', '#f58bb8', '#f9b8c9', '#a5e4f0', '#86efc9', '#d9fbe9'],
+  // Ocean: deep blue to sea green.
+  ocean: ['#172554', '#1e40af', '#2563eb', '#0ea5e9', '#22d3ee', '#2dd4bf', '#4ade80', '#bbf7d0'],
 };
+
+// Scales that keep their order on dark themes.
+const FIXED_ORDER = new Set(['terrain', 'viridis', 'magma', 'turbo', 'aurora', 'ocean']);
 
 const base = {
   mode: 'dark',
@@ -106,7 +120,7 @@ export function resolveTheme(theme = 'midnight') {
 
 export function sequentialStops(theme, scale = theme.scale) {
   const stops = Array.isArray(scale) ? scale : scales[scale] ?? scales.violet;
-  return theme.mode === 'dark' && !Array.isArray(scale) && scale !== 'terrain' ? [...stops].reverse() : stops;
+  return theme.mode === 'dark' && !Array.isArray(scale) && !FIXED_ORDER.has(scale) ? [...stops].reverse() : stops;
 }
 
 export function parseHex(hex) {

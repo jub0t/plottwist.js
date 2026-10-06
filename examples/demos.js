@@ -388,6 +388,31 @@ function customerIssues(seed) {
   });
 }
 
+// ---- peaks and pits (signed surface) --------------------------------------------------
+
+// A field of peaks and pits around zero, e.g. a forecast's error across a
+// 48 x 36 grid; frames drift the features.
+export function peaksAndPits(seed = 3) {
+  const r = rng(seed);
+  const bumps = Array.from({ length: 22 }, () => ({
+    x: r() * 48, y: r() * 36, s: 1.4 + r() * 2.6, h: (r() < 0.62 ? 1 : -1) * (10 + r() * 45), dx: (r() - 0.5) * 3, dy: (r() - 0.5) * 3,
+  }));
+  return ['Mon', 'Tue', 'Wed', 'Thu'].map((label, t) => {
+    const data = [];
+    for (let x = 0; x < 48; x++) {
+      for (let y = 0; y < 36; y++) {
+        let v = 0;
+        for (const b of bumps) {
+          const d2 = (x - b.x - b.dx * t) ** 2 + (y - b.y - b.dy * t) ** 2;
+          v += b.h * Math.exp(-d2 / (2 * b.s * b.s));
+        }
+        data.push({ x, y, error: v });
+      }
+    }
+    return { label, data };
+  });
+}
+
 // ---- demos ------------------------------------------------------------------------
 
 // Builds a demo: `make(seed)` produces data, `build(el, data, extra)` the chart.

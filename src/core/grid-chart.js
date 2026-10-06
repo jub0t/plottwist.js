@@ -37,6 +37,28 @@ export function niceTicks(max, count = 4) {
   return Array.from({ length: best.n + 1 }, (_, i) => +(i * best.step).toPrecision(12));
 }
 
+// Round ticks covering [min, max]; [0, ...] when min is 0, as niceTicks.
+export function niceTicksRange(min, max, count = 4) {
+  if (min >= 0) return niceTicks(max, count);
+  if (max <= 0) return niceTicks(-min, count).map((t) => -t).reverse();
+  const span = max - min;
+  let best = null;
+  const mag = 10 ** Math.floor(Math.log10(span / count));
+  for (const m of [mag / 10, mag, mag * 10]) {
+    for (const f of [1, 2, 2.5, 5]) {
+      const step = f * m;
+      const lo = Math.floor(min / step - 1e-9);
+      const hi = Math.ceil(max / step - 1e-9);
+      const n = hi - lo;
+      if (n < 3 || n > 7) continue;
+      const cover = (hi - lo) * step;
+      if (!best || cover < best.cover - 1e-9) best = { step, lo, hi, cover };
+    }
+  }
+  if (!best) return [min, 0, max];
+  return Array.from({ length: best.hi - best.lo + 1 }, (_, i) => +((best.lo + i) * best.step).toPrecision(12));
+}
+
 export class GridChart extends Chart {
   constructor(container, options = {}) {
     super(container, options);
@@ -55,6 +77,12 @@ export class GridChart extends Chart {
   }
 
   // Subclasses call this at the end of their constructor once defaults are set.
+  // Whether values below zero are kept (true for surfaces); bars and tiles
+  // clamp them to zero.
+  get signed() {
+    return false;
+  }
+
   init() {
     const { options } = this;
     if (options.frames) this.setFrames(options.frames);
@@ -95,28 +123,41 @@ export class GridChart extends Chart {
         records.set(k, d);
         let vec = values.get(k);
         if (!vec) values.set(k, (vec = new Float64Array(S)));
-        vec[this.stack ? stackIndex.get(this.stack(d)) : 0] += Math.max(0, +this.value(d) || 0);
+        const raw = +this.value(d) || 0;
+        vec[this.stack ? stackIndex.get(this.stack(d)) : 0] += this.signed ? raw : Math.max(0, raw);
       }
       return { label: f.label, values, records };
     });
 
     // One scale across all frames, so heights stay comparable through time.
     let max = 0;
-    for (const f of this.frames)
-      for (const vec of f.values.values()) max = Math.max(max, vec.reduce((a, b) => a + b, 0));
+    let min = 0;
+    for (const f of this.frames) {
+      for (const vec of f.values.values()) {
+        const t = vec.reduce((a, b) => a + b, 0);
+        max = Math.max(max, t);
+        min = Math.min(min, t);
+      }
+    }
     // With a value axis the scale tops out at a round tick, so gridlines
-    // land on clean values; without one it fits the data exactly.
+    // land on clean values; without one it fits the data exactly. Charts
+    // that allow negative values (signed) start the scale below zero.
     const axis = this.axis;
+    if (this.signed && this.options.min != null) min = Math.min(0, this.options.min);
     if (this.options.max != null) {
       this.maxValue = this.options.max;
-      this.ticks = niceTicks(this.maxValue, axis.ticks).filter((t) => t <= this.maxValue + 1e-9);
+      this.minValue = min;
+      this.ticks = niceTicksRange(min, this.maxValue, axis.ticks).filter((t) => t <= this.maxValue + 1e-9 && t >= min - 1e-9);
     } else if (axis.show) {
-      this.ticks = niceTicks(max || 1, axis.ticks);
+      this.ticks = niceTicksRange(min, max || (min < 0 ? 0 : 1), axis.ticks);
+      this.minValue = this.ticks[0];
       this.maxValue = this.ticks.at(-1);
     } else {
-      this.maxValue = max || 1;
+      this.minValue = min;
+      this.maxValue = max || (min < 0 ? 0 : 1);
       this.ticks = [];
     }
+    if (this.maxValue - this.minValue < 1e-12) this.maxValue = this.minValue + 1;
 
     const [sx, sy] = this.spacing;
     const nx = this.xs.length;
@@ -204,7 +245,7 @@ export class GridChart extends Chart {
 
   // World height for a value.
   z(v) {
-    return (v / this.maxValue) * this.maxHeight;
+    return ((v - this.minValue) / (this.maxValue - this.minValue)) * this.maxHeight;
   }
 
   // ---- animation --------------------------------------------------------------
@@ -260,7 +301,7 @@ export class GridChart extends Chart {
     // Room at the top for the series legend; labels reserve their own.
     const top = this.stack ? 48 : 12;
     this.fitScene(this.sceneBounds(), { top, right: 12, bottom: 12, left: 12 });
-    this.drawFloor();
+    if (this.options.floor !== false) this.drawFloor();
     this.drawWalls();
     this.drawLabels();
     this.drawMarks();
@@ -389,7 +430,7 @@ export class GridChart extends Chart {
     if (hovered && this.focus.value > 0) reserved.push(P(ax, ay, this.z(this.levelValue(this.hovered))).y);
     for (const tick of this.ticks) {
       const z = this.z(tick);
-      if (tick > 0) {
+      if (tick > this.minValue) {
         ctx.beginPath();
         const a = P(-xFar, yFar, z);
         const b = P(xFar, yFar, z);
@@ -517,7 +558,7 @@ export class GridChart extends Chart {
       const squash = Math.max(0.2, C._sp);
       for (const cell of this.cells.values()) {
         if (!cell.present || cell.total <= 0) continue;
-        const v = Math.min(1, cell.total / this.maxValue);
+        const v = Math.min(1, (cell.total - this.minValue) / (this.maxValue - this.minValue));
         const c = P(cell.gx, cell.gy);
         R.glow(this.markColor(cell), c.x, c.y, r * 2, r * 2 * squash, theme.pool * 0.5 * (0.35 + 0.65 * v));
       }

@@ -129,3 +129,5 @@ export { scale };
 const bergs = new IsoIcebergChart<{ area: string; seen: number; hidden: number }>('#i', { data: [], key: 'area', above: 'seen', below: 'hidden' });
 bergs.on('hover', (b) => b?.values[1]);
 export { bergs };
+terrain.reconfigure({ preset: 'glossy', lighting: { specular: 0.6, shininess: 40, rim: 0.3, azimuth: -120 }, cut: { below: -5 }, opacity: 0.9 });
+terrain.reconfigure({ style: 'voxel', voxel: { step: 5, resolution: 2 }, mesh: 'triangles', meshStep: 2, colorScale: 'aurora', floor: false });
