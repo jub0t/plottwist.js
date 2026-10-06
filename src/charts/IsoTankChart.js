@@ -101,7 +101,8 @@ export class IsoTankChart extends Chart {
   tick(now) {
     const dt = this._last == null ? 1 / 60 : Math.min(0.05, (now - this._last) / 1000);
     this._last = now;
-    this.time = now / 1000;
+    // Elapsed chart time, not wall time, so renders repeat exactly.
+    this.time = (this.time ?? 0) + dt;
     let active = this.focus.tick(now);
     const stiffness = 38;
     const damping = 7.5;
