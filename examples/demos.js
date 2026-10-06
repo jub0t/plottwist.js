@@ -5,7 +5,7 @@
 // { chart, shuffle } where shuffle() swaps in a fresh random dataset.
 
 import {
-  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart, IsoGaltonChart,
+  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart, IsoGaltonChart, IsoBalanceChart,
 } from '../src/index.js';
 import { worldCountries } from '../src/geo/countries.js';
 
@@ -345,6 +345,26 @@ function commutes(seed) {
   });
 }
 
+// ---- budget vs actual (balance) ----------------------------------------------------
+
+// Planned against actual spend by department, $k per quarter: cloud and
+// travel creep over plan mid-year, then get reined in.
+const DEPARTMENTS = [['Salaries', 420, 0.02], ['Cloud', 90, 0.35], ['Marketing', 140, 0.1], ['Travel', 40, 0.5], ['Office', 60, -0.05]];
+
+function budgetActual(seed) {
+  const r = rng(seed);
+  return ['Q1', 'Q2', 'Q3', 'Q4'].map((label, t) => {
+    const creep = [0.1, 0.6, 1, 0.3][t];
+    return {
+      label,
+      data: DEPARTMENTS.flatMap(([dept, plan, over]) => [
+        { side: 'Budget', dept, k: plan },
+        { side: 'Actual', dept, k: plan * (0.94 + over * creep + r() * 0.06) },
+      ]),
+    };
+  });
+}
+
 // ---- demos ------------------------------------------------------------------------
 
 // Builds a demo: `make(seed)` produces data, `build(el, data, extra)` the chart.
@@ -499,6 +519,21 @@ export const demos = {
         format: (v) => `${Math.round(v)}`,
         countLabel: 'People',
         ariaLabel: 'Galton board: 600 commute times fall into a histogram of minutes, coloured by mode',
+        ...extra,
+      }),
+    ),
+  },
+  balance: {
+    title: 'Balance scale',
+    type: 'IsoBalanceChart',
+    create: demo(15, 3779, budgetActual, (el, frames, extra) =>
+      new IsoBalanceChart(el, {
+        frames,
+        side: 'side',
+        key: 'dept',
+        value: 'k',
+        format: (v) => `$${v.toFixed(0)}k`,
+        ariaLabel: 'Balance scale of budget against actual spend by department, by quarter',
         ...extra,
       }),
     ),

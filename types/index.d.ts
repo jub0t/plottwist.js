@@ -570,6 +570,51 @@ export declare class IsoGaltonChart<D = any> extends Chart<GaltonBin> {
   setData(data: D[]): void;
 }
 
+// ---- balance scale -------------------------------------------------------------------
+
+export interface BalanceSide {
+  readonly kind: 'side';
+  readonly side: string | number;
+  /** 0 = left pan, 1 = right pan. */
+  readonly index: number;
+}
+
+export interface BalanceItem {
+  readonly kind: 'item';
+  readonly side: string | number;
+  readonly key: string | number;
+}
+
+export interface IsoBalanceChartOptions<D> extends ChartOptions {
+  data?: D[];
+  frames?: Frame<D>[];
+  /** Which pan a record goes on: the first two distinct values. Default 'side'. */
+  side?: Accessor<D, string | number>;
+  /** Item (block) of each record; the same item keeps its colour on both sides. Default 'name'. */
+  key?: Accessor<D, string | number>;
+  value?: Accessor<D, number>;
+  colors?: string[] | Record<string, string> | ((key: string | number, index: number) => string | undefined);
+  /** Largest beam angle, radians. Default 0.28. */
+  maxTilt?: number;
+  /** How strongly a relative difference tilts the beam. Default 5. */
+  sensitivity?: number;
+  /** Fixed scale for stack heights. Default: the heaviest side seen. */
+  max?: number;
+  format?: (value: number) => string;
+}
+
+/** Two sides on a balance: stacked items on each pan, the beam tilting toward the heavier. */
+export declare class IsoBalanceChart<D = any> extends Chart<BalanceSide | BalanceItem> {
+  constructor(container: HTMLElement | string, options?: IsoBalanceChartOptions<D>);
+  readonly options: IsoBalanceChartOptions<D>;
+  readonly frameLabel: string | number | null;
+  readonly sides: (string | number)[];
+  /** Current (interpolated) total of a side. */
+  total(side: string | number): number;
+  setData(data: D[]): void;
+  setFrames(frames: Frame<D>[]): void;
+}
+
 // ---- maps ---------------------------------------------------------------------
 
 export type LonLat = [lon: number, lat: number];
