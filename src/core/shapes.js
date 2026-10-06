@@ -68,3 +68,35 @@ export function drawBox(camera, renderer, theme, { x0, x1, y0, y1, z0, z1 }, rgb
   }
   return hits;
 }
+
+// Vertical prism over a convex ground polygon base ([[x, y], ...]) from z0 to
+// z1: visible sides, then the top. Returns the screen polygons for hits.
+export function drawPrism(camera, renderer, theme, base, z0, z1, rgb, { glow = 1, top = true, stroke } = {}) {
+  const P = (x, y, z) => camera.project(x, y, z);
+  let area = 0;
+  for (let i = 0; i < base.length; i++) {
+    const [ax, ay] = base[i];
+    const [bx, by] = base[(i + 1) % base.length];
+    area += ax * by - bx * ay;
+  }
+  const pts = area < 0 ? [...base].reverse() : base; // counter-clockwise
+  const hits = [];
+  for (let i = 0; i < pts.length; i++) {
+    const [ax, ay] = pts[i];
+    const [bx, by] = pts[(i + 1) % pts.length];
+    const len = Math.hypot(bx - ax, by - ay) || 1;
+    const n = [(by - ay) / len, -(bx - ax) / len, 0];
+    if (!camera.faces(...n)) continue;
+    const fill = shade(rgb, faceBrightness(camera, theme, n, glow));
+    const poly = [P(ax, ay, z0), P(bx, by, z0), P(bx, by, z1), P(ax, ay, z1)];
+    renderer.polygon(poly, fill, stroke ?? fill, 0.6);
+    hits.push(poly);
+  }
+  if (top && camera.faces(0, 0, 1)) {
+    const fill = shade(rgb, faceBrightness(camera, theme, [0, 0, 1], glow) * (1 + 0.1 * theme.gradient));
+    const poly = pts.map(([x, y]) => P(x, y, z1));
+    renderer.polygon(poly, fill, stroke ?? fill, 0.6);
+    hits.push(poly);
+  }
+  return hits;
+}

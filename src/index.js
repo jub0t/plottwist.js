@@ -5,6 +5,7 @@ export { IsoRibbonChart } from './charts/IsoRibbonChart.js';
 export { IsoRaceChart } from './charts/IsoRaceChart.js';
 export { IsoWaffleChart } from './charts/IsoWaffleChart.js';
 export { IsoFlowChart } from './charts/IsoFlowChart.js';
+export { IsoHelixChart } from './charts/IsoHelixChart.js';
 export { IsoHexMap } from './charts/IsoHexMap.js';
 export { IsoRegionMap } from './charts/IsoRegionMap.js';
 export { Chart, VIEWS } from './core/chart.js';

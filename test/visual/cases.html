@@ -43,6 +43,16 @@
         race: { demo: 'race' },
         waffle: { demo: 'waffle' },
         flow: { demo: 'flow' },
+        helix: { demo: 'helix' },
+        'helix-hover': {
+          demo: 'helix',
+          setup: hoverAt((c) => {
+            const p = c.points[230];
+            const a = c.angle(p.frac);
+            const r = c.radius + (p.value / c.maxValue) * c.reach * 0.6;
+            return { datum: p, at: [Math.cos(a) * r, Math.sin(a) * r, c.baseZ(p)] };
+          }),
+        },
         surface: { demo: 'surface' },
         'surface-water': { demo: 'surface', options: { water: { value: 35, label: 'Dead zone' }, peaks: 3 } },
         'surface-topo': { demo: 'surface', options: { bands: true, contours: 10, colorScale: 'emerald' } },
@@ -100,7 +110,7 @@
         document.body.append(el);
         const { chart } = demos[spec.demo].create(el, { theme: 'test', ...spec.options });
         chart.visible = true;
-        if (chart.frames.length > 1) chart.seek(chart.frames.length - 1);
+        if (chart.frames?.length > 1) chart.seek(chart.frames.length - 1);
         settle(chart, 260);
         if (spec.setup) {
           spec.setup(chart);

@@ -186,6 +186,15 @@
       </section>
 
       <section>
+        <h2>Seasonal helix</h2>
+        <p>Weekly rides on a city bike share, 2021–2025, sample data. One turn per year: every June sits above the last, and the summer bulge widens as the scheme grows. Play draws it week by week; hover compares with the year before.</p>
+        <div class="card">
+          <div class="stage"><div class="year" id="helix-year"></div><div class="chart" id="helix"></div></div>
+          <div class="controls" id="helix-controls"></div>
+        </div>
+      </section>
+
+      <section>
         <h2>Terrain surface</h2>
         <p>Wi-Fi signal quality across a 36 × 24 m office floor through the day, sample data. Contour lines follow the value axis; hover to probe a point.</p>
         <div class="card">
@@ -507,6 +516,19 @@ chart.setTheme('brand');</pre>
         player(chart, host, $(`${id}-year`));
         views(chart, host);
         host.append(button('Shuffle', shuffle));
+      }
+
+      {
+        const { chart, shuffle } = create('helix');
+        const host = $('helix-controls');
+        player(chart, host, $('helix-year'));
+        segmented(host, ['iso', 'top', 'front'], (v) => (v === 'iso' ? chart.resetView() : chart.setView(v)));
+        const spin = button('Spin', () => {
+          chart.options.autoRotate = !chart.options.autoRotate;
+          spin.setAttribute('aria-pressed', String(!!chart.options.autoRotate));
+          chart.invalidate();
+        });
+        host.append(spin, button('Shuffle', shuffle));
       }
 
       {

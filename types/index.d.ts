@@ -466,6 +466,50 @@ export declare class IsoFlowChart<D = any> extends Chart<FlowNode | FlowLink | F
   setFrames(frames: Frame<D>[]): void;
 }
 
+// ---- seasonal helix ----------------------------------------------------------------
+
+export interface HelixPoint<D = any> {
+  readonly d: D;
+  /** Timestamp, ms. */
+  readonly t: number;
+  readonly value: number;
+  /** Which turn of the coil (0 = first cycle). */
+  readonly turn: number;
+  /** Position within the cycle, 0..1. */
+  readonly frac: number;
+}
+
+export interface IsoHelixChartOptions<D> extends ChartOptions {
+  data?: D[];
+  /** Date, ISO string or ms timestamp. Default 'date'. */
+  date?: Accessor<D, Date | string | number>;
+  value?: Accessor<D, number>;
+  /** One turn per 'year' (months around the ring), 'week' (weekdays) or 'day' (hours). Default 'year'. */
+  cycle?: 'year' | 'week' | 'day';
+  /** Inner radius of the coil. Default 1.8. */
+  radius?: number;
+  /** How far the largest value pushes out. Default 3.2. */
+  reach?: number;
+  /** Rise per turn. Default: fits the coil to a sensible height. */
+  turnHeight?: number;
+  max?: number;
+  colorScale?: ScaleName | string[];
+  format?: (value: number) => string;
+  valueLabel?: string;
+}
+
+/** A time series coiled into a helix, one turn per cycle, so seasonality lines up vertically. */
+export declare class IsoHelixChart<D = any> extends Chart<HelixPoint<D>> {
+  constructor(container: HTMLElement | string, options?: IsoHelixChartOptions<D>);
+  readonly options: IsoHelixChartOptions<D>;
+  /** The turn label (e.g. the year) at the playhead. */
+  readonly frameLabel: string | null;
+  readonly points: HelixPoint<D>[];
+  setData(data: D[]): void;
+  /** The same point one cycle earlier (directly below), or null. */
+  previousCycle(point: HelixPoint<D>): HelixPoint<D> | null;
+}
+
 // ---- maps ---------------------------------------------------------------------
 
 export type LonLat = [lon: number, lat: number];

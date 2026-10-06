@@ -5,7 +5,7 @@
 // { chart, shuffle } where shuffle() swaps in a fresh random dataset.
 
 import {
-  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoFlowChart,
+  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoFlowChart, IsoHelixChart,
 } from '../src/index.js';
 import { worldCountries } from '../src/geo/countries.js';
 
@@ -291,6 +291,24 @@ function storeFunnel(seed) {
   });
 }
 
+// ---- bike share (helix) ------------------------------------------------------------
+
+// Weekly rides on a city bike share, 2021-2025: a summer peak, steady growth,
+// and the odd washed-out week.
+function bikeRides(seed) {
+  const r = rng(seed);
+  const start = Date.UTC(2021, 0, 4);
+  return Array.from({ length: 260 }, (_, w) => {
+    const t = start + w * 7 * 86400000;
+    const year = new Date(t).getUTCFullYear() - 2021;
+    const frac = (t - Date.UTC(2021 + year, 0, 1)) / (365.25 * 86400000);
+    const season = 0.35 + 0.65 * Math.max(0, Math.sin(Math.PI * (frac - 0.12) / 0.8)) ** 1.4;
+    const rain = r() < 0.08 ? 0.55 : 1;
+    const holiday = frac > 0.96 || frac < 0.02 ? 0.6 : 1;
+    return { week: new Date(t), rides: 18 * 1.16 ** year * season * rain * holiday * (0.92 + r() * 0.16) };
+  });
+}
+
 // ---- demos ------------------------------------------------------------------------
 
 // Builds a demo: `make(seed)` produces data, `build(el, data, extra)` the chart.
@@ -413,6 +431,21 @@ export const demos = {
         format: (v) => `${v.toFixed(0)}k`,
         colors: { Ads: '#ec4899', Social: '#8b5cf6', Search: '#3b82f6', Email: '#d97706' },
         ariaLabel: 'Store funnel as a factory floor: visitors ride conveyor belts from channels to purchase',
+        ...extra,
+      }),
+    ),
+  },
+  helix: {
+    title: 'Seasonal helix',
+    type: 'IsoHelixChart',
+    create: demo(12, 9241, bikeRides, (el, data, extra) =>
+      new IsoHelixChart(el, {
+        data,
+        date: 'week',
+        value: 'rides',
+        valueLabel: 'Rides',
+        format: (v) => `${v.toFixed(1)}k`,
+        ariaLabel: 'Helix of weekly bike-share rides 2021 to 2025, one turn per year',
         ...extra,
       }),
     ),

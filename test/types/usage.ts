@@ -1,6 +1,6 @@
 // Compile-only check that the public types describe real usage.
 // Run with: npm run test:types
-import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoSurface, IsoWaffleChart, IsoFlowChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
+import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoSurface, IsoWaffleChart, IsoFlowChart, IsoHelixChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
 import { worldCountries } from 'plottwist/geo/countries';
 
 interface Row {
@@ -110,3 +110,9 @@ funnel.on('hover', (h) => (h?.kind === 'link' ? h.source.id : h?.kind === 'node'
 export { funnel };
 
 terrain.reconfigure({ water: { value: 30, label: 'Sea' }, smooth: 3, bands: true, style: 'wireframe', float: 1, peaks: 2 });
+
+const coil = new IsoHelixChart<{ week: Date; rides: number }>('#h', { data: [], date: 'week', value: 'rides', cycle: 'year' });
+coil.on('hover', (p) => (p ? coil.previousCycle(p)?.value : null));
+// @ts-expect-error unknown cycle
+new IsoHelixChart('#h', { cycle: 'month' });
+export { coil };
