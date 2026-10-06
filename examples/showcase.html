@@ -51,7 +51,13 @@
         regions: { arcs: null, borderColor: '#ffffff' },
         // Nearly face-on so the year runs across the full width.
         calendar: { camera: { yaw: 0.06, pitch: 0.95 } },
+        galton: { autoplay: false },
+        surface: { smooth: 3, water: { value: 35, label: 'Dead zone' }, peaks: 3 },
       };
+
+      // Timeline position to show, when not the last frame. Tanks: September,
+      // when two reservoirs are below their safe minimum (amber) and four aren't.
+      const showAt = { tanks: 3 };
 
       const W = 1200;
       const PAD = 8;
@@ -74,6 +80,14 @@
       );
       y += LABEL + 330 + GAP;
       layout.push(['race', PAD, y + LABEL, half, 300], ['calendar', PAD + half + GAP, y + LABEL, half, 300]);
+      y += LABEL + 300 + GAP;
+      layout.push(
+        ['surface', PAD, y + LABEL, third, 340],
+        ['helix', PAD + third + GAP, y + LABEL, third, 340],
+        ['galton', PAD + (third + GAP) * 2, y + LABEL, third, 340],
+      );
+      y += LABEL + 340 + GAP;
+      layout.push(['tanks', PAD, y + LABEL, half, 300], ['waffle', PAD + half + GAP, y + LABEL, half, 300]);
       y += LABEL + 300;
       const H = y + PAD;
 
@@ -89,10 +103,11 @@
       // barely run requestAnimationFrame).
       function settle() {
         let t = performance.now();
-        for (const c of charts) {
+        layout.forEach(([id], i) => {
+          const c = charts[i];
           c.visible = true;
-          if (c.frames.length > 1) c.seek(c.frames.length - 1);
-        }
+          c.seek(showAt[id] ?? c.timeline.length - 1);
+        });
         for (let i = 0; i < 260; i++) {
           t += 16;
           for (const c of charts) {
