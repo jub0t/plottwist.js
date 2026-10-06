@@ -2,6 +2,12 @@
 
 Isometric, animated, interactive charts for the web. Zero runtime dependencies, Canvas 2D.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/showcase-dark.png" />
+  <source media="(prefers-color-scheme: light)" srcset="docs/showcase-light.png" />
+  <img alt="plottwist charts: a hex world map with flowing arcs, 3D bars over time, stacked city blocks, a calendar heatmap and ribbon lines" src="docs/showcase-light.png" />
+</picture>
+
 ```js
 import { IsoBarChart, IsoHexMap } from 'plottwist';
 
@@ -46,6 +52,7 @@ new IsoBarChart(el, { data, theme: 'brand', grid: 'none', colors: { Online: '#7c
 
 ```sh
 npm run dev   # http://localhost:5173/examples/ with live reload
+npm run showcase             # re-render the README images (docs/showcase-*.png)
 node scripts/build-land.js   # regenerate src/geo/land.js from Natural Earth
 ```
 

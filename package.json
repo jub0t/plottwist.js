@@ -11,7 +11,8 @@
     "src"
   ],
   "scripts": {
-    "dev": "node scripts/dev-server.js"
+    "dev": "node scripts/dev-server.js",
+    "showcase": "node scripts/build-showcase.js"
   },
   "keywords": [
     "chart",
