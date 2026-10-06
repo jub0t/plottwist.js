@@ -30,7 +30,6 @@
         // Nearly face-on so the year runs across the full width.
         calendar: { camera: { yaw: 0.06, pitch: 0.95 } },
         galton: { autoplay: false },
-        surface: { smooth: 3, water: { value: 35, label: 'Dead zone' }, peaks: 3 },
       };
 
       // Timeline position to show, when not the last frame. Tanks: September,
@@ -60,23 +59,30 @@
       y += LABEL + 330 + GAP;
       layout.push(['race', PAD, y + LABEL, half, 300], ['calendar', PAD + half + GAP, y + LABEL, half, 300]);
       y += LABEL + 300 + GAP;
+      // The surface twice, in two of its styles.
       layout.push(
-        ['surface', PAD, y + LABEL, third, 340],
-        ['helix', PAD + third + GAP, y + LABEL, third, 340],
-        ['galton', PAD + (third + GAP) * 2, y + LABEL, third, 340],
+        ['surface', PAD, y + LABEL, half, 360, { title: 'Terrain surface · voxel', options: { preset: 'voxel' } }],
+        ['surface', PAD + half + GAP, y + LABEL, half, 360, { title: 'Terrain surface · wireframe', options: { preset: 'wireframe' } }],
+      );
+      y += LABEL + 360 + GAP;
+      layout.push(
+        ['helix', PAD, y + LABEL, third, 340],
+        ['galton', PAD + third + GAP, y + LABEL, third, 340],
+        ['waffle', PAD + (third + GAP) * 2, y + LABEL, third, 340],
       );
       y += LABEL + 340 + GAP;
-      layout.push(['tanks', PAD, y + LABEL, half, 300], ['waffle', PAD + half + GAP, y + LABEL, half, 300]);
+      const twoThirds = third * 2 + GAP;
+      layout.push(['tanks', PAD, y + LABEL, twoThirds, 300], ['balance', PAD + twoThirds + GAP, y + LABEL, third, 300]);
       y += LABEL + 300 + GAP;
-      layout.push(['balance', PAD, y + LABEL, half, 300], ['iceberg', PAD + half + GAP, y + LABEL, half, 300]);
-      y += LABEL + 300;
+      layout.push(['iceberg', PAD, y + LABEL, inner, 440]);
+      y += LABEL + 440;
       const H = y + PAD;
 
-      const charts = layout.map(([id, x, top, w, h]) => {
+      const charts = layout.map(([id, x, top, w, h, extra]) => {
         const el = Object.assign(document.createElement('div'), { className: 'tile' });
         Object.assign(el.style, { left: `${x}px`, top: `${top}px`, width: `${w}px`, height: `${h}px` });
         document.body.append(el);
-        return demos[id].create(el, { theme: 'preview', ...previewOptions[id] }).chart;
+        return demos[id].create(el, { theme: 'preview', ...previewOptions[id], ...extra?.options }).chart;
       });
 
       // Advance every chart to the end of its timeline with all entrance
@@ -114,14 +120,14 @@
         const ctx = out.getContext('2d');
         ctx.scale(dpr, dpr);
 
-        layout.forEach(([id, x, top, w, h], i) => {
+        layout.forEach(([id, x, top, w, h, extra], i) => {
           const chart = charts[i];
           // A mid grey that reads on both light and dark page backgrounds.
           ctx.textBaseline = 'middle';
           ctx.textAlign = 'left';
           ctx.font = '600 14px Inter, sans-serif';
           ctx.fillStyle = INK;
-          ctx.fillText(demos[id].title, x + 4, top - LABEL / 2);
+          ctx.fillText(extra?.title ?? demos[id].title, x + 4, top - LABEL / 2);
           ctx.drawImage(chart.renderer.canvas, x, top, w, h);
           if (chart.overlay) ctx.drawImage(chart.overlay.canvas, x, top, w, h);
         });
