@@ -5,7 +5,7 @@
 // { chart, shuffle } where shuffle() swaps in a fresh random dataset.
 
 import {
-  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoWaffleChart,
+  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart,
 } from '../src/index.js';
 import { worldCountries } from '../src/geo/countries.js';
 
@@ -230,6 +230,36 @@ function energyMix(seed) {
   });
 }
 
+// ---- office signal (surface) -------------------------------------------------------
+
+// Wi-Fi signal quality over a 36 x 24 m office floor: five access points,
+// with crowds soaking up signal as the day goes on.
+const ACCESS_POINTS = [[6, 5], [18, 4], [30, 7], [10, 18], [26, 19]];
+
+function officeSignal(seed) {
+  const r = rng(seed);
+  const strength = ACCESS_POINTS.map(() => 0.75 + r() * 0.25);
+  const crowds = Array.from({ length: 4 }, () => [4 + r() * 28, 3 + r() * 18, 3 + r() * 4]);
+  return ['08:00', '11:00', '14:00', '17:00'].map((label, t) => {
+    const busy = [0.15, 0.85, 1, 0.45][t];
+    const data = [];
+    for (let x = 0; x < 36; x++) {
+      for (let y = 0; y < 24; y++) {
+        // Smooth union of the access points' coverage (no creases).
+        let miss = 1;
+        ACCESS_POINTS.forEach(([ax, ay], k) => {
+          const d2 = (x - ax) ** 2 + (y - ay) ** 2;
+          miss *= 1 - strength[k] * Math.exp(-d2 / 30);
+        });
+        let q = 100 * (1 - miss);
+        for (const [cx, cy, rad] of crowds) q *= 1 - busy * 0.45 * Math.exp(-((x - cx) ** 2 + (y - cy) ** 2) / (rad * rad));
+        data.push({ x, y, quality: Math.max(4, q) });
+      }
+    }
+    return { label, data };
+  });
+}
+
 // ---- demos ------------------------------------------------------------------------
 
 // Builds a demo: `make(seed)` produces data, `build(el, data, extra)` the chart.
@@ -316,6 +346,25 @@ export const demos = {
         format: (v) => `${v.toFixed(0)}`,
         colors: { Coal: '#64748b', Gas: '#d97706', Nuclear: '#8b5cf6', Hydro: '#3b82f6', Wind: '#0891b2', Solar: '#ec4899' },
         ariaLabel: 'Cube waffle of electricity generation by source over time; each cube is 2 TWh',
+        ...extra,
+      }),
+    ),
+  },
+  surface: {
+    title: 'Terrain surface',
+    type: 'IsoSurface',
+    create: demo(8, 6007, officeSignal, (el, frames, extra) =>
+      new IsoSurface(el, {
+        frames,
+        x: 'x',
+        y: 'y',
+        value: 'quality',
+        valueLabel: 'Signal',
+        xTicks: (v) => (v % 6 === 0 ? `${v} m` : null),
+        yTicks: (v) => (v % 6 === 0 ? `${v} m` : null),
+        format: (v) => `${v.toFixed(0)}%`,
+        frameDuration: 2000,
+        ariaLabel: 'Surface of Wi-Fi signal quality across an office floor at four times of day',
         ...extra,
       }),
     ),

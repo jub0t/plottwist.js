@@ -1,6 +1,6 @@
 // Compile-only check that the public types describe real usage.
 // Run with: npm run test:types
-import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoWaffleChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
+import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoSurface, IsoWaffleChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
 import { worldCountries } from 'plottwist/geo/countries';
 
 interface Row {
@@ -99,3 +99,8 @@ mix.on('hover', (c) => c?.key);
 // @ts-expect-error not a field of the record
 new IsoWaffleChart<{ source: string; twh: number }>('#w', { key: 'nope' });
 export { mix };
+
+const terrain = new IsoSurface<{ x: number; y: number; q: number }>('#s', { data: [], value: 'q', contours: [25, 50, 75], mesh: true });
+// @ts-expect-error contours must be a count, list or false
+new IsoSurface('#s', { contours: 'many' });
+export { terrain };

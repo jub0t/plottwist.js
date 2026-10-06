@@ -1,5 +1,6 @@
 export { IsoBarChart } from './charts/IsoBarChart.js';
 export { IsoHeatmap } from './charts/IsoHeatmap.js';
+export { IsoSurface } from './charts/IsoSurface.js';
 export { IsoRibbonChart } from './charts/IsoRibbonChart.js';
 export { IsoRaceChart } from './charts/IsoRaceChart.js';
 export { IsoWaffleChart } from './charts/IsoWaffleChart.js';

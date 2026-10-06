@@ -177,6 +177,15 @@
       </section>
 
       <section>
+        <h2>Terrain surface</h2>
+        <p>Wi-Fi signal quality across a 36 × 24 m office floor through the day, sample data. Contour lines follow the value axis; hover to probe a point.</p>
+        <div class="card">
+          <div class="stage"><div class="year" id="surface-year"></div><div class="chart" id="surface"></div></div>
+          <div class="controls" id="surface-controls"></div>
+        </div>
+      </section>
+
+      <section>
         <h2>Bars over time</h2>
         <p>Monthly active users by region and platform, millions, 2018–2025.</p>
         <div class="card"><div class="stage"><div class="year" id="bars-year"></div><div class="chart" id="bars"></div></div><div class="controls" id="bars-controls"></div></div>
@@ -483,7 +492,7 @@ chart.setTheme('brand');</pre>
         window.regions = chart;
       }
 
-      for (const id of ['race', 'waffle', 'bars', 'stack']) {
+      for (const id of ['race', 'waffle', 'surface', 'bars', 'stack']) {
         const { chart, shuffle } = create(id);
         const host = $(`${id}-controls`);
         player(chart, host, $(`${id}-year`));

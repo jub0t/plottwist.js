@@ -42,6 +42,14 @@
         },
         race: { demo: 'race' },
         waffle: { demo: 'waffle' },
+        surface: { demo: 'surface' },
+        'surface-hover': {
+          demo: 'surface',
+          setup: hoverAt((c) => {
+            const cell = [...c.cells.values()].find((x) => x.i === 18 && x.j === 4);
+            return { datum: cell, at: [cell.gx, cell.gy, c.z(cell.total)] };
+          }),
+        },
         bars: { demo: 'bars' },
         'bars-hover': {
           demo: 'bars',

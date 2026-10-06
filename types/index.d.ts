@@ -322,6 +322,21 @@ export declare class IsoRaceChart<D = any> extends Chart<RaceBar> {
   setFrames(frames: Frame<D>[]): void;
 }
 
+// ---- surface ----------------------------------------------------------------------
+
+export interface IsoSurfaceOptions<D> extends IsoHeatmapOptions<D> {
+  /** Contour lines: a count of levels (default 8), explicit values, or false. */
+  contours?: number | number[] | false;
+  /** Draw the grid mesh over the surface. Default false. */
+  mesh?: boolean;
+}
+
+/** A lit, coloured surface over a grid of values, with contour lines. */
+export declare class IsoSurface<D = any> extends IsoHeatmap<D> {
+  constructor(container: HTMLElement | string, options?: IsoSurfaceOptions<D>);
+  readonly options: IsoSurfaceOptions<D>;
+}
+
 // ---- cube waffle ----------------------------------------------------------------
 
 export interface WaffleCategory {
