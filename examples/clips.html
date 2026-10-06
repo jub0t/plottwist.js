@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>plottwist clips</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Renders the README clips; scripts/build-clips.js calls window.clip(). */
+      body { margin: 0; background: #0b0a14; }
+      .stage { position: absolute; left: 0; top: 0; }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import { demos } from './demos.js';
+
+      // us-atlas (ISC), only for the drill-down clip.
+      const US_ATLAS = 'https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json';
+      const rnd = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
+      const CLIPS = {
+        // One pass through the race, holding on the final year.
+        race: {
+          demo: 'race',
+          size: [640, 400],
+          chart: { loop: false },
+          export: { format: 'gif', fps: 15 },
+        },
+        // World -> United States -> California, scripted on the clip clock.
+        drilldown: {
+          demo: 'regions',
+          size: [640, 400],
+          chart: { arcs: null },
+          prepare: async (chart) => {
+            const us = await (await fetch(US_ATLAS)).json();
+            chart.seek(chart.frames.length - 1);
+            const r = rnd(17);
+            const states = us.objects.states.geometries.map((g) => ({ state: g.properties.name, revenue: 2 + r() * r() * 60 }));
+            // Store locations clustered around California's cities; the map
+            // assigns each point to the county containing it.
+            const hubs = [[-118.24, 34.05], [-122.42, 37.77], [-117.16, 32.72], [-121.49, 38.58], [-119.79, 36.74]];
+            const stores = Array.from({ length: 900 }, (_, i) => {
+              const [lon, lat] = hubs[i % hubs.length];
+              return { lon: lon + (r() - 0.5) * 2.2, lat: lat + (r() - 0.5) * 1.6, revenue: 1 + r() * 4 };
+            });
+            return { us, states, stores };
+          },
+          export: { format: 'gif', fps: 15, duration: 9000, play: false },
+          script: ({ us, states, stores }) => ({ time, chart }) => {
+            if (time >= 2200 && chart.depth === 0) {
+              chart.drill(us, { object: 'states', bounds: [-125, 24, -66.5, 49.6], key: 'state', data: states, labels: 5, format: (v) => `$${v.toFixed(1)}M` });
+            } else if (time >= 5400 && chart.depth === 1) {
+              chart.drill(us, {
+                object: 'counties',
+                filter: (f) => String(f.id).startsWith('06'),
+                bounds: [-124.6, 32.3, -114, 42.2],
+                lon: 'lon',
+                lat: 'lat',
+                data: stores,
+                labels: 4,
+                format: (v) => `$${v.toFixed(0)}k`,
+              });
+            }
+          },
+        },
+      };
+
+      const base64 = async (blob) => {
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        let s = '';
+        for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        return btoa(s);
+      };
+
+      // Render a clip; the file is left in window.lastData (base64).
+      window.clip = async (name) => {
+        await document.fonts.load('600 14px Inter');
+        await document.fonts.load('400 12px "JetBrains Mono"');
+        await document.fonts.ready;
+        const spec = CLIPS[name];
+        const el = Object.assign(document.createElement('div'), { className: 'stage' });
+        Object.assign(el.style, { width: `${spec.size[0]}px`, height: `${spec.size[1]}px` });
+        document.body.append(el);
+        const { chart } = demos[spec.demo].create(el, spec.chart);
+        try {
+          const ctx = (await spec.prepare?.(chart)) ?? {};
+          const blob = await chart.export({ ...spec.export, onFrame: spec.script?.(ctx), pixelRatio: 1 });
+          window.lastData = await base64(blob);
+          return { size: blob.size, chars: window.lastData.length, type: blob.type };
+        } finally {
+          chart.destroy();
+          el.remove();
+        }
+      };
+      window.clipNames = Object.keys(CLIPS);
+    </script>
+  </body>
+</html>

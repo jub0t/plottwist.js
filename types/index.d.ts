@@ -153,6 +153,11 @@ export interface ExportOptions {
   play?: boolean;
   /** Full camera turns over the clip, e.g. 1 for a complete orbit. Default 0. */
   orbit?: number;
+  /**
+   * Called before each frame renders, with the clip time in ms. Use it to
+   * script a clip: change data, drill, move the camera. May return a promise.
+   */
+  onFrame?: (info: { frame: number; time: number; chart: Chart<any> }) => void | Promise<void>;
   /** Called with the fraction of frames rendered, 0..1. */
   onProgress?: (fraction: number) => void;
   /** Abort a running export. */

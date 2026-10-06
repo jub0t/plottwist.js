@@ -38,6 +38,7 @@ class Session {
     this.format = format;
     this.signal = o.signal;
     this.onProgress = o.onProgress;
+    this.onFrame = o.onFrame;
 
     const R = chart.renderer;
     const ratio = o.pixelRatio ?? (o.width || o.height ? 1 : window.devicePixelRatio || 1);
@@ -110,11 +111,14 @@ class Session {
 
   // Advance the synthetic clock to frame i, render, and composite the layers
   // (background, scene, overlay) into this.canvas.
-  render(i) {
+  async render(i) {
     if (this.signal?.aborted) throw this.signal.reason ?? new DOMException('Export aborted', 'AbortError');
     const chart = this.chart;
     const t = this.t + (i * 1000) / this.fps;
     chart._clock = t;
+    // Scripted clips: the hook can change data, drill, move the camera...
+    if (this.onFrame) await this.onFrame({ frame: i, time: (i * 1000) / this.fps, chart });
+    if (this.signal?.aborted) throw this.signal.reason ?? new DOMException('Export aborted', 'AbortError');
     if (this.orbit) chart.view.yaw.set(this.startYaw - (this.orbit * TAU * i) / this.frameCount);
     chart._dirty = true;
     chart._frame(t);
@@ -147,7 +151,7 @@ class Session {
 
   async still() {
     this.warmUp();
-    const canvas = this.render(0);
+    const canvas = await this.render(0);
     return new Promise((resolve, reject) =>
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('plottwist: PNG encoding failed'))), 'image/png'),
     );
@@ -158,7 +162,7 @@ class Session {
     const { pixelWidth: w, pixelHeight: h } = this;
     const enc = new GifEncoder(w, h, { delay: 1000 / this.fps });
     for (let i = 0; i < this.frameCount; i++) {
-      this.render(i);
+      await this.render(i);
       enc.addFrame(this.ctx.getImageData(0, 0, w, h).data);
       if (i % 4 === 3) await idle(); // keep the page responsive
     }
@@ -191,7 +195,7 @@ class Session {
     try {
       for (let i = 0; i < this.frameCount; i++) {
         if (failure) throw failure;
-        const frame = new VideoFrame(this.render(i), {
+        const frame = new VideoFrame(await this.render(i), {
           timestamp: Math.round(i * frameUs),
           duration: Math.round(frameUs),
         });
@@ -231,7 +235,7 @@ class Session {
     if (!mimeType) throw new Error(`plottwist: this browser cannot record ${format}`);
 
     this.warmUp();
-    this.render(0);
+    await this.render(0);
     const stream = this.canvas.captureStream(this.fps);
     const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate(this) });
     const parts = [];
@@ -243,7 +247,7 @@ class Session {
       for (let i = 1; i < this.frameCount; i++) {
         const due = start + (i * 1000) / this.fps;
         await new Promise((r) => setTimeout(r, Math.max(0, due - performance.now())));
-        this.render(i);
+        await this.render(i);
       }
       await new Promise((r) => setTimeout(r, 1000 / this.fps));
     } finally {

@@ -4,6 +4,11 @@ Isometric, animated, interactive charts for the web. Zero runtime dependencies, 
 
 <img alt="plottwist charts: a hex world map, an extruded region map, 3D bars over time, stacked city blocks, ribbon lines and a calendar heatmap" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/showcase.png" />
 
+<p>
+  <img width="49%" alt="A 3D bar chart race of app users from 2010 to 2025" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/race.gif" />
+  <img width="49%" alt="A region map drilling from the world into US states, then California counties" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/drilldown.gif" />
+</p>
+
 ```js
 import { IsoBarChart, IsoHexMap } from 'plottwist';
 
@@ -97,6 +102,19 @@ const spin = await map.export({ format: 'webm', orbit: 1, duration: 8000 });
 const png = await chart.export({ format: 'png' });            // transparent still
 ```
 
+Script a clip with `onFrame`, which runs before each frame on the clip's clock (the drill-down above
+is made this way, see `examples/clips.html`):
+
+```js
+await map.export({
+  format: 'gif',
+  duration: 9000,
+  onFrame: ({ time, chart }) => {
+    if (time >= 2200 && chart.depth === 0) chart.drill(usStates, { key: 'state', data: stateData });
+  },
+});
+```
+
 Export steps the chart on its own clock, so every clip is frame-exact regardless of machine speed.
 Video is encoded with WebCodecs and muxed in the library (falling back to `MediaRecorder` where
 WebCodecs is missing); the encoders load only on first use.
@@ -120,6 +138,7 @@ npm run test:visual          # pixel comparison with test/visual/baseline (-- --
 npm run test:export          # export every format and check it decodes (uses ffprobe if installed)
 npm run build                # dist/ bundles
 npm run showcase             # re-render the README image (docs/showcase.png)
+npm run clips                # re-render the README clips (docs/*.gif)
 node scripts/build-land.js   # regenerate src/geo/land.js from Natural Earth
 node scripts/build-countries.js  # regenerate src/geo/countries-data.js
 ```
