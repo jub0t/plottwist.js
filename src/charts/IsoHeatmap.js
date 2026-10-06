@@ -15,6 +15,8 @@ export class IsoHeatmap extends GridChart {
     this.extrude = options.extrude ?? true;
     // Tiles already cover the floor, so pooled light under them is wasted work.
     this.pools = false;
+    // Colour carries the value; walls would only clutter a dense grid.
+    this.defaultAxis = false;
     this.init();
   }
 

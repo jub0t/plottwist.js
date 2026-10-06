@@ -16,6 +16,27 @@ const accessor = (a) => (typeof a === 'function' ? a : (d) => d[a]);
 export const key = (x, y) => `${x}\u0000${y}`;
 const unique = (values) => [...new Set(values)];
 
+// Round tick values from 0 to at least `max`. Among round steps (1, 2, 2.5, 5
+// x 10^n) giving 3-6 intervals, pick the one with the lowest top, so the
+// axis hugs the data instead of overshooting it.
+export function niceTicks(max, count = 4) {
+  if (!(max > 0)) return [0, 1];
+  const mag = 10 ** Math.floor(Math.log10(max / count));
+  let best = null;
+  for (const m of [mag / 10, mag, mag * 10]) {
+    for (const f of [1, 2, 2.5, 5]) {
+      const step = f * m;
+      const n = Math.ceil(max / step - 1e-9);
+      if (n < 3 || n > 6) continue;
+      const top = n * step;
+      if (!best || top < best.top - 1e-9 || (Math.abs(top - best.top) < 1e-9 && Math.abs(n - count) < Math.abs(best.n - count))) {
+        best = { step, n, top };
+      }
+    }
+  }
+  return Array.from({ length: best.n + 1 }, (_, i) => +(i * best.step).toPrecision(12));
+}
+
 export class GridChart extends Chart {
   constructor(container, options = {}) {
     super(container, options);
@@ -75,7 +96,19 @@ export class GridChart extends Chart {
     let max = 0;
     for (const f of this.frames)
       for (const vec of f.values.values()) max = Math.max(max, vec.reduce((a, b) => a + b, 0));
-    this.maxValue = this.options.max ?? (max || 1);
+    // With a value axis the scale tops out at a round tick, so gridlines
+    // land on clean values; without one it fits the data exactly.
+    const axis = this.axis;
+    if (this.options.max != null) {
+      this.maxValue = this.options.max;
+      this.ticks = niceTicks(this.maxValue, axis.ticks).filter((t) => t <= this.maxValue + 1e-9);
+    } else if (axis.show) {
+      this.ticks = niceTicks(max || 1, axis.ticks);
+      this.maxValue = this.ticks.at(-1);
+    } else {
+      this.maxValue = max || 1;
+      this.ticks = [];
+    }
 
     const [sx, sy] = this.spacing;
     const nx = this.xs.length;
@@ -218,9 +251,11 @@ export class GridChart extends Chart {
     const { renderer: R, theme } = this;
     this.fitScene(this.sceneBounds(), { top: 64, right: 28, bottom: 24, left: 28 });
     this.drawFloor();
+    this.drawWalls();
     this.drawLabels();
     this.drawMarks();
     R.ctx.globalAlpha = 1;
+    this.drawLevel();
     this.drawLegend();
 
     if (this.hovered && (this.timeline.playing || this.focus.value < 1)) this._updateTooltip();
@@ -240,6 +275,125 @@ export class GridChart extends Chart {
   }
 
   drawMarks() {}
+
+  // ---- value axis ------------------------------------------------------------
+
+  // options.axis: true | false | { ticks, title }. Charts set `defaultAxis`.
+  get axis() {
+    const a = this.options.axis ?? this.defaultAxis ?? true;
+    if (a === false) return { show: false, ticks: 4 };
+    return { show: true, ticks: 4, title: this.options.valueLabel, ...(typeof a === 'object' ? a : {}) };
+  }
+
+  // How visible the walls are: they fade out as the view nears top-down,
+  // where height can't be read anyway.
+  get wallFade() {
+    return Math.max(0, Math.min(1, (1.42 - this.camera.pitch) / 0.3));
+  }
+
+  // Two walls on the floor edges farthest from the camera, with gridlines at
+  // the ticks and labels on the outer edge. They follow the camera, so the
+  // axis is always behind the data; in front view the back wall faces the
+  // viewer and the chart reads like a plain 2D bar chart.
+  drawWalls() {
+    this._walls = null;
+    if (!this.axis.show) return;
+    const fade = this.wallFade;
+    if (fade <= 0) return;
+    const { camera: C, renderer: R, theme } = this;
+    const ctx = R.ctx;
+    const [hx, hy] = this.floorExtent();
+    const yFar = C.groundDepth(0, hy) < C.groundDepth(0, -hy) ? hy : -hy;
+    const xFar = C.groundDepth(hx, 0) < C.groundDepth(-hx, 0) ? hx : -hx;
+    const H = this.maxHeight;
+    const P = (x, y, z) => C.project(x, y, z);
+
+    ctx.globalAlpha = fade;
+    const wallFill = theme.wall ?? theme.floor;
+    R.polygon([P(-xFar, yFar, 0), P(xFar, yFar, 0), P(xFar, yFar, H), P(-xFar, yFar, H)], wallFill, theme.grid, 1);
+    R.polygon([P(xFar, yFar, 0), P(xFar, -yFar, 0), P(xFar, -yFar, H), P(xFar, yFar, H)], wallFill, theme.grid, 1);
+
+    // Labels go on whichever outer wall edge sits further left on screen.
+    const useA = P(-xFar, yFar, 0).x < P(xFar, -yFar, 0).x;
+    const ax = useA ? -xFar : xFar;
+    const ay = useA ? yFar : -yFar;
+    const reserved = [];
+    if (this.reference) reserved.push(P(ax, ay, this.z(this.reference.value)).y);
+    const hovered = this.cellOf(this.hovered);
+    if (hovered && this.focus.value > 0) reserved.push(P(ax, ay, this.z(this.levelValue(this.hovered))).y);
+    for (const tick of this.ticks) {
+      const z = this.z(tick);
+      if (tick > 0) {
+        ctx.beginPath();
+        const a = P(-xFar, yFar, z);
+        const b = P(xFar, yFar, z);
+        const c = P(xFar, -yFar, z);
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.lineTo(c.x, c.y);
+        ctx.strokeStyle = theme.grid;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      const p = P(ax, ay, z);
+      // Leave room for the reference label and the hover pill.
+      if (reserved.some((y) => Math.abs(y - p.y) < 18)) continue;
+      R.text(this.format(tick), p.x - 8, p.y, { color: theme.textMuted, size: 11, align: 'right', mono: true });
+    }
+    if (this.axis.title) {
+      const p = P(ax, ay, H);
+      R.text(this.axis.title, p.x - 8, p.y - 18, { color: theme.textMuted, size: 11, weight: 600, align: 'right' });
+    }
+    ctx.globalAlpha = 1;
+    this._walls = { xFar, yFar, ax, ay, fade };
+  }
+
+  // Value at the top of what's hovered (a stack reads at its part's top).
+  levelValue(datum) {
+    const cell = this.cellOf(datum);
+    if (datum?.cell && this.stack) {
+      let sum = 0;
+      for (let s = 0; s <= datum.index; s++) sum += cell.value[s];
+      return sum;
+    }
+    return cell.total;
+  }
+
+  // 3D crosshair: dashed lines from the hovered mark's top to both walls,
+  // and a value pill on the axis at exactly that height.
+  drawLevel() {
+    const w = this._walls;
+    const cell = this.cellOf(this.hovered);
+    if (!w || !cell || this.focus.value <= 0) return;
+    const { camera: C, renderer: R, theme } = this;
+    const ctx = R.ctx;
+    const value = this.levelValue(this.hovered);
+    const z = this.z(value);
+    const P = (x, y) => C.project(x, y, z);
+    const top = P(cell.gx, cell.gy);
+    ctx.globalAlpha = this.focus.value * w.fade;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = theme.text;
+    ctx.lineWidth = 1;
+    for (const end of [P(cell.gx, w.yFar), P(w.xFar, cell.gy)]) {
+      ctx.beginPath();
+      ctx.moveTo(top.x, top.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    // Value pill over the tick labels.
+    const a = P(w.ax, w.ay);
+    const text = this.format(value);
+    const tw = R.measure(text, 11, 600, true);
+    ctx.beginPath();
+    ctx.roundRect(a.x - tw - 16, a.y - 10, tw + 12, 20, 6);
+    ctx.fillStyle = theme.text;
+    ctx.fill();
+    R.text(text, a.x - 10, a.y, { color: theme.surface, size: 11, weight: 600, align: 'right', mono: true });
+    ctx.globalAlpha = 1;
+  }
 
   // Colour for a series slot (stack part when stacked, otherwise row).
   // options.colors may be an array, a { key: colour } map, or (key, index) => colour.

@@ -36,6 +36,10 @@ map.hexAt(-74, 40.7);   // the hex containing it
 - `IsoRibbonChart`: one extruded ribbon per series, x along the floor
 - `IsoHexMap`: rounded hexagons over the world (or `bounds`), data binned by exact coordinates; arcs and callouts
 
+Grid charts get a value axis on back walls that follow the camera (`axis: false` to hide), a dashed
+level line from the hovered mark to the axis, value labels (`labels: true | N`) and a reference
+plane (`reference: { value, label }`) that bars rise through.
+
 All charts support `frames` + `play()/pause()/seek()`, view presets (`setView('iso' | 'top' | 'front')`),
 orbit/zoom, hover tooltips and `on('hover' | 'click' | 'frame')`.
 

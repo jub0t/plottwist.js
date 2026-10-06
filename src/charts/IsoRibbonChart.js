@@ -187,7 +187,8 @@ export class IsoRibbonChart extends GridChart {
   }
 
   // One tooltip for the whole x position: every series' value there.
-  describe(cell) {
+  describe(datum) {
+    const cell = this.cellOf(datum);
     const rows = this.ys.map((yv, j) => {
       const c = this.cells.get(key(cell.x, yv));
       return {
