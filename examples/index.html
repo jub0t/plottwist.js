@@ -53,6 +53,15 @@
       .chart.map { height: min(72vh, 640px); }
       label.knob { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
       label.knob input { width: 110px; flex: none; min-width: 0; }
+      label.knob input[type='color'] {
+        width: 28px;
+        height: 22px;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: none;
+        cursor: pointer;
+      }
       .stage { position: relative; }
       /* The current frame is page UI, driven by the chart's 'frame' event. */
       .year {
@@ -139,6 +148,7 @@
         <div class="card">
           <div class="stage"><div class="year" id="regions-year"></div><div class="chart map" id="regions"></div></div>
           <div class="controls" id="regions-controls"></div>
+          <div class="controls" id="regions-controls-2"></div>
         </div>
       </section>
 
@@ -348,6 +358,48 @@ chart.setTheme('brand');</pre>
           arcsBtn.textContent = on ? 'Hide arcs' : 'Show arcs';
         });
         host.append(arcsBtn, button('Shuffle', shuffle));
+
+        // Shape and stroke controls.
+        const host2 = $('regions-controls-2');
+        const knob = (label, min, max, step, value, oninput) => {
+          const input = el('input', { type: 'range', min, max, step, value });
+          input.oninput = () => oninput(+input.value);
+          const wrap = el('label', { className: 'knob', textContent: label });
+          wrap.append(input);
+          host2.append(wrap);
+        };
+        const swatch = (label, value, oninput) => {
+          const input = el('input', { type: 'color', value });
+          input.oninput = () => oninput(input.value);
+          const wrap = el('label', { className: 'knob', textContent: label });
+          wrap.append(input);
+          host2.append(wrap);
+        };
+        const pick = (label, options, value, onchange) => {
+          const select = el('select', { ariaLabel: label });
+          for (const [v, text] of options) select.append(el('option', { value: v, textContent: `${label}: ${text}` }));
+          select.value = value;
+          select.onchange = () => onchange(select.value);
+          host2.append(select);
+        };
+        knob('Border', 0, 3, 0.25, chart.strokes.borderWidth, (v) => chart.reconfigure({ borderWidth: v }));
+        swatch('Border colour', '#07070b', (v) => chart.reconfigure({ borderColor: v }));
+        knob('Top edge', 0, 3, 0.25, chart.strokes.edgeWidth, (v) => chart.reconfigure({ edgeWidth: v }));
+        swatch('Hover', '#ec4899', (v) => chart.reconfigure({ hoverColor: v }));
+        knob('Detail', 0, 1, 0.05, 1, (v) => chart.reconfigure({ detail: v }));
+        const resolutions = {
+          '110m': async () => (await import('../src/geo/countries.js')).worldCountries(),
+          '50m': async () => (await import('../src/geo/countries-50m.js')).worldCountries50m(),
+        };
+        pick('Resolution', [['110m', '1:110m'], ['50m', '1:50m']], '110m', async (v) =>
+          chart.reconfigure({ regions: await resolutions[v]() }),
+        );
+        pick(
+          'Region',
+          [['world', 'World'], ['europe', 'Europe'], ['asia', 'Asia']],
+          'world',
+          (v) => chart.reconfigure({ bounds: { world: undefined, europe: [-25, 34, 45, 71], asia: [60, -10, 150, 55] }[v] }),
+        );
         window.regions = chart;
       }
 

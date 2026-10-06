@@ -12,6 +12,10 @@
     "./geo/countries": {
       "types": "./types/geo/countries.d.ts",
       "import": "./src/geo/countries.js"
+    },
+    "./geo/countries-50m": {
+      "types": "./types/geo/countries-50m.d.ts",
+      "import": "./src/geo/countries-50m.js"
     }
   },
   "files": [

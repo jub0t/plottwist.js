@@ -24,7 +24,7 @@ export class IsoRegionMap extends GeoChart {
     }
     this.key = accessor(this.options.key ?? 'id');
     this.heightRatio = 0.055;
-    this.layoutKeys = ['regions', 'bounds', 'exclude', 'simplify'];
+    this.layoutKeys = ['regions', 'bounds', 'exclude', 'simplify', 'detail'];
     this.unmatched = new Set();
     this.init();
   }
@@ -53,8 +53,12 @@ export class IsoRegionMap extends GeoChart {
       for (const f of features) for (const p of polygonsOf(f.geometry)) for (const pt of p[0]) samples.push(pt);
     }
     this.fitProjection(samples, o.width ?? 100);
-    // Douglas-Peucker tolerance in world units (~0.9 degree on a world map).
-    const tolerance = o.simplify ?? this.mapWidth * 0.0025;
+    // detail: 1 keeps every visible bend, 0 simplifies hard. Even at full
+    // detail, points closer than ~0.04% of the map width (well under a pixel
+    // at typical sizes) are dropped. `simplify` sets the tolerance (world
+    // units) directly.
+    const detail = Math.max(0, Math.min(1, o.detail ?? 1));
+    const tolerance = o.simplify ?? this.mapWidth * (0.0004 + 0.006 * (1 - detail) ** 2);
 
     this.regions = new Map();
     this.aliases = new Map();
@@ -62,7 +66,14 @@ export class IsoRegionMap extends GeoChart {
     features.forEach((f, index) => {
       const id = String(f.id ?? f.properties?.name ?? index);
       const polys = polygonsOf(f.geometry)
-        .map((poly) => poly.map((ring, ri) => this._ring(ring, ri > 0, tolerance)).filter(Boolean))
+        .map((poly) =>
+          poly
+            .map((ring, ri) => {
+              const folded = foldAntimeridian(ring);
+              return this._ring(bounds ? clipRing(folded, bounds) : folded, ri > 0, tolerance);
+            })
+            .filter(Boolean),
+        )
         .filter((rings) => rings.length && !rings[0].hole);
       if (!polys.length) return;
 
@@ -93,10 +104,8 @@ export class IsoRegionMap extends GeoChart {
   // Project and simplify a ring; compute its area, centroid and the outward
   // normal of every edge (pointing away from the solid, so into holes).
   _ring(coords, hole, tolerance) {
-    // Rings that cross the antimeridian jump from +180 to -180; fold them onto
-    // the eastern side so they don't stretch across the whole map.
-    const crosses = coords.some((c, i) => i && Math.abs(c[0] - coords[i - 1][0]) > 180);
-    const world = coords.map(([lon, lat]) => this.toWorld(crosses && lon < 0 ? 180 : lon, lat));
+    if (coords.length < 3) return null;
+    const world = coords.map(([lon, lat]) => this.toWorld(lon, lat));
     // Tiny islands would collapse under simplification; keep them as drawn.
     let pts = simplify(world, tolerance);
     if (pts.length < 4) pts = simplify(world, 0);
@@ -253,9 +262,14 @@ export class IsoRegionMap extends GeoChart {
     }
     ctx.fillStyle = this.options.landColor ?? theme.land;
     ctx.fill('evenodd');
-    ctx.strokeStyle = this.options.borderColor ?? theme.surface;
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    const { borderWidth, borderColor } = this.strokes;
+    if (borderWidth > 0) {
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = borderWidth;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
 
     // Outline a hovered region that has no data.
     const h = this.hovered;
@@ -264,10 +278,23 @@ export class IsoRegionMap extends GeoChart {
       ctx.beginPath();
       this._trace(outline, 0);
       ctx.strokeStyle = theme.textMuted;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = Math.max(1.5, borderWidth + 0.5);
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
+  }
+
+  // Stroke settings: borderWidth / borderColor for the borders between
+  // regions, edgeWidth / edgeColor for the outline on raised tops
+  // (edgeColor 'none' hides it; by default it's a highlight of the fill).
+  get strokes() {
+    const o = this.options;
+    return {
+      borderWidth: o.borderWidth ?? 0.75,
+      borderColor: o.borderColor ?? this.theme.surface,
+      edgeWidth: o.edgeWidth ?? 1,
+      edgeColor: o.edgeColor ?? null,
+    };
   }
 
   _drawExtruded() {
@@ -304,6 +331,9 @@ export class IsoRegionMap extends GeoChart {
   _drawSolid(region, z0, z1, rgb) {
     const { renderer: R, camera: C, theme } = this;
     const ctx = R.ctx;
+    // Round joins: mitred joins spike at every sharp coastline corner.
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
     const walls = [];
     for (const poly of region.polys) {
       for (const ring of poly) {
@@ -336,6 +366,7 @@ export class IsoRegionMap extends GeoChart {
       ctx.closePath();
       ctx.fillStyle = fill;
       ctx.fill();
+      // Stroke in the fill hides seams between segments.
       ctx.strokeStyle = fill;
       ctx.lineWidth = 0.6;
       ctx.stroke();
@@ -345,9 +376,12 @@ export class IsoRegionMap extends GeoChart {
     this._trace(region, z1);
     ctx.fillStyle = shade(rgb, faceBrightness(C, theme, [0, 0, 1]) * (1 + 0.1 * theme.gradient));
     ctx.fill('evenodd');
-    ctx.strokeStyle = shade(rgb, 1.4, 0.35 + 0.4 * theme.edge);
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    const { edgeWidth, edgeColor } = this.strokes;
+    if (edgeWidth > 0 && edgeColor !== 'none') {
+      ctx.strokeStyle = edgeColor ?? shade(rgb, 1.4, 0.35 + 0.4 * theme.edge);
+      ctx.lineWidth = edgeWidth;
+      ctx.stroke();
+    }
 
     // Hit regions: the top of every ring.
     return region.polys.flatMap((poly) => poly.map((ring) => ring.pts.map(([x, y]) => C.project(x, y, z1))));
@@ -424,4 +458,43 @@ function simplify(pts, tolerance) {
     }
   }
   return pts.filter((_, i) => keep[i]);
+}
+
+// Clip a [lon, lat] ring to [west, south, east, north] (Sutherland-Hodgman),
+// so a cropped map shows only the part of each region inside the crop.
+function clipRing(ring, [w, s, e, n]) {
+  const edges = [
+    [(p) => p[0] >= w, (a, b) => cut(a, b, 0, w)],
+    [(p) => p[0] <= e, (a, b) => cut(a, b, 0, e)],
+    [(p) => p[1] >= s, (a, b) => cut(a, b, 1, s)],
+    [(p) => p[1] <= n, (a, b) => cut(a, b, 1, n)],
+  ];
+  let out = ring;
+  for (const [inside, intersect] of edges) {
+    const input = out;
+    out = [];
+    for (let i = 0; i < input.length; i++) {
+      const cur = input[i];
+      const prev = input[(i + input.length - 1) % input.length];
+      if (inside(cur)) {
+        if (!inside(prev)) out.push(intersect(prev, cur));
+        out.push(cur);
+      } else if (inside(prev)) out.push(intersect(prev, cur));
+    }
+    if (!out.length) break;
+  }
+  return out;
+}
+
+function cut(a, b, axis, value) {
+  const t = (value - a[axis]) / (b[axis] - a[axis]);
+  return axis === 0 ? [value, a[1] + (b[1] - a[1]) * t] : [a[0] + (b[0] - a[0]) * t, value];
+}
+
+// Rings that cross the antimeridian jump from +180 to -180; fold them onto the
+// eastern side so they don't stretch across the whole map. Runs before
+// clipping, which would otherwise drag the jump across the crop.
+function foldAntimeridian(ring) {
+  const crosses = ring.some((c, i) => i && Math.abs(c[0] - ring[i - 1][0]) > 180);
+  return crosses ? ring.map(([lon, lat]) => [lon < 0 ? 180 : lon, lat]) : ring;
 }

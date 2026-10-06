@@ -427,8 +427,16 @@ export interface IsoRegionMapOptions<D> extends GeoChartOptions<D> {
   /** Feature ids to leave out. Default ['ATA']. */
   exclude?: string[];
   bounds?: Bounds;
-  /** Simplification tolerance in world units. */
+  /** Shape detail, 0 (simplified) to 1 (every visible bend). Default 1. */
+  detail?: number;
+  /** Simplification tolerance in world units (overrides `detail`). */
   simplify?: number;
+  /** Width of the borders between regions, px. Default 0.75; 0 hides them. */
+  borderWidth?: number;
+  /** Outline width on raised tops, px. Default 1. */
+  edgeWidth?: number;
+  /** Outline colour on raised tops; 'none' hides it. Default: a highlight of the fill. */
+  edgeColor?: string;
   /** Map width in world units. Default 100. */
   width?: number;
   /** Region names and values on the tallest regions: true for all, or N. */

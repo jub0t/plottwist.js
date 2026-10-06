@@ -46,6 +46,10 @@ const regions = new IsoRegionMap<{ country: string; gdp: number }>('#regions', {
   key: 'country',
   value: 'gdp',
   arcs: [{ from: 'USA', to: [2.35, 48.86] }],
+  borderWidth: 1.5,
+  edgeColor: 'none',
+  detail: 0.8,
+  bounds: [-25, 34, 45, 71],
 });
 regions.resolve('DE');
 regions.on('click', (r) => r.feature.id);
