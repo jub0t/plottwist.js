@@ -249,7 +249,9 @@ export class GridChart extends Chart {
 
   draw() {
     const { renderer: R, theme } = this;
-    this.fitScene(this.sceneBounds(), { top: 64, right: 28, bottom: 24, left: 28 });
+    // Category labels hang off the floor edges, so reserve their width.
+    const side = 16 + this.labelWidth();
+    this.fitScene(this.sceneBounds(), { top: 64, right: side, bottom: 24, left: side });
     this.drawFloor();
     this.drawWalls();
     this.drawLabels();
@@ -265,13 +267,30 @@ export class GridChart extends Chart {
   // and the ceiling of the tallest possible mark.
   sceneBounds() {
     const [hx, hy] = this.floorExtent();
-    const lx = hx + 1.1;
-    const ly = hy + 1.1;
+    const lx = hx + 0.5;
+    const ly = hy + 0.5;
     const top = this.maxHeight + 0.2;
     const pts = [];
     for (const [x, y] of [[-lx, -ly], [lx, -ly], [lx, ly], [-lx, ly]]) pts.push([x, y, -0.4]);
     for (const [x, y] of [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]]) pts.push([x, y, top]);
     return pts;
+  }
+
+  // Widest category label in pixels (cached per data set), plus the swatch.
+  labelWidth() {
+    if (this._labelWidthFor === this.frames) return this._labelWidth;
+    const R = this.renderer;
+    let w = 0;
+    this.xs.forEach((v, i) => {
+      const label = this.tickLabel('x', v, i);
+      if (label != null) w = Math.max(w, R.measure(label, 12, 600));
+    });
+    this.ys.forEach((v, j) => {
+      const label = this.tickLabel('y', v, j);
+      if (label != null) w = Math.max(w, R.measure(label, 12, 600) + (this.colorByRow ? 12 : 0));
+    });
+    this._labelWidthFor = this.frames;
+    return (this._labelWidth = w);
   }
 
   drawMarks() {}

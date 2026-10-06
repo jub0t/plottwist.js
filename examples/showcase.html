@@ -16,7 +16,32 @@
   </head>
   <body>
     <script type="module">
+      import { registerTheme } from '../src/index.js';
       import { demos } from './demos.js';
+
+      // The preview is a transparent PNG shown on GitHub's light and dark
+      // backgrounds, so: no additive glow (it turns into solid blobs with
+      // nothing behind it) and mid-grey page text that reads on both.
+      const INK = '#7c7b95';
+      registerTheme('preview', {
+        extends: 'midnight',
+        glow: 0,
+        pool: 0,
+        text: INK,
+        textMuted: INK,
+        // Labels on marks sit on the chart's own dark surfaces: keep them light.
+        markText: '#f4f3ff',
+        markHalo: '#07070b',
+      });
+
+      // Per-chart tweaks for the preview.
+      const previewOptions = {
+        map: { arcs: null },
+        // Visible borders: the default is the (now transparent) page colour.
+        regions: { arcs: null, borderColor: '#2c2b4a' },
+        // Nearly face-on so the year runs across the full width.
+        calendar: { camera: { yaw: 0.06, pitch: 0.95 } },
+      };
 
       const W = 1200;
       const PAD = 8;
@@ -46,9 +71,7 @@
         const el = Object.assign(document.createElement('div'), { className: 'tile' });
         Object.assign(el.style, { left: `${x}px`, top: `${top}px`, width: `${w}px`, height: `${h}px` });
         document.body.append(el);
-        // The README preview leaves out the maps' arcs.
-        const extra = id === 'map' || id === 'regions' ? { arcs: null } : {};
-        return demos[id].create(el, { theme: 'midnight', ...extra }).chart;
+        return demos[id].create(el, { theme: 'preview', ...previewOptions[id] }).chart;
       });
 
       // Advance every chart to the end of its timeline with all entrance
@@ -91,7 +114,7 @@
           ctx.textBaseline = 'middle';
           ctx.textAlign = 'left';
           ctx.font = '600 14px Inter, sans-serif';
-          ctx.fillStyle = '#8b8aa3';
+          ctx.fillStyle = INK;
           ctx.fillText(demos[id].title, x + 4, top - LABEL / 2);
           ctx.drawImage(chart.renderer.canvas, x, top, w, h);
           if (chart.overlay) ctx.drawImage(chart.overlay.canvas, x, top, w, h);

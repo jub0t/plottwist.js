@@ -370,8 +370,8 @@ export class IsoRegionMap extends GeoChart {
       if (placed.some((q) => box.l < q.r && box.r > q.l && box.t < q.b && box.b > q.t)) continue;
       placed.push(box);
       R.ctx.globalAlpha = this.hovered && item !== this.hovered ? 1 - 0.5 * this.focus.value : 1;
-      R.text(name, p.x, p.y - 21, { color: theme.text, size: 11, weight: 600, halo: theme.surface });
-      R.text(this.format(item.value), p.x, p.y - 8, { color: theme.text, size: 10, mono: true, halo: theme.surface });
+      R.text(name, p.x, p.y - 21, { color: theme.markText ?? theme.text, size: 11, weight: 600, halo: theme.markHalo ?? theme.surface });
+      R.text(this.format(item.value), p.x, p.y - 8, { color: theme.markText ?? theme.text, size: 10, mono: true, halo: theme.markHalo ?? theme.surface });
     }
     R.ctx.globalAlpha = 1;
   }

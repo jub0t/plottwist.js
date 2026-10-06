@@ -39,6 +39,8 @@ const base = {
   glow: 0,
   // Coloured light pooled on the floor beneath marks (0 = none).
   pool: 0.25,
+  // Labels drawn on top of marks (value labels, region names) use markText
+  // with a markHalo outline; both default to text / surface.
   floorThickness: 0.12,
   gridStyle: 'lines', // 'lines' | 'dots' | 'none'
   scale: 'violet',
@@ -51,7 +53,7 @@ export const themes = {
     floor: '#0c0c14',
     grid: '#262640',
     land: '#1b1a33',
-    wall: 'rgba(22, 22, 40, 0.55)',
+    wall: 'rgba(12, 12, 20, 0.88)', // the floor's colour, so walls and floor match on any page
     highlight: '#17172b',
     text: '#f4f3ff',
     textMuted: '#9897b8',
@@ -72,7 +74,7 @@ export const themes = {
     floor: '#1b1b24',
     grid: '#2b2b38',
     land: '#2a2a3a',
-    wall: 'rgba(34, 34, 46, 0.6)',
+    wall: 'rgba(27, 27, 36, 0.88)',
     highlight: '#262636',
     text: '#f4f4f8',
     textMuted: '#a3a3b8',
