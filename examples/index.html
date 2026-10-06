@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>plottwist gallery</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Page tokens are written from the active chart theme by applyTheme(),
+         so the page and the charts always share one palette. */
+      :root {
+        --bg: #07070b;
+        --card: #07070b;
+        --surface: #0c0c14;
+        --border: #262640;
+        --text: #f4f3ff;
+        --muted: #9897b8;
+        --accent: #8b5cf6;
+        --aura: rgba(110, 70, 255, 0.16);
+        color-scheme: dark;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        background:
+          radial-gradient(900px 500px at 15% -10%, var(--aura), transparent 70%),
+          radial-gradient(700px 400px at 95% 10%, var(--aura), transparent 70%),
+          var(--bg);
+        font: 14px/1.55 Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+        transition: background-color 0.3s ease;
+      }
+      main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 80px; }
+      header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+      h1 { font-size: 30px; letter-spacing: -0.02em; margin: 0 0 4px; }
+      h2 { font-size: 18px; letter-spacing: -0.01em; margin: 0 0 2px; }
+      p { margin: 0; color: var(--muted); }
+      section { margin-top: 44px; }
+      .card {
+        margin-top: 14px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px -30px var(--aura);
+      }
+      .chart { height: min(62vh, 540px); }
+      .stage { position: relative; }
+      /* The current frame is page UI, driven by the chart's 'frame' event. */
+      .year {
+        position: absolute;
+        top: 16px;
+        left: 20px;
+        z-index: 1;
+        pointer-events: none;
+        font: 600 30px 'JetBrains Mono', ui-monospace, monospace;
+        color: var(--muted);
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 12px 14px;
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+      }
+      .group { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+      .group button { border: 0; border-radius: 0; }
+      .group button + button { border-left: 1px solid var(--border); }
+      button, select {
+        font: inherit;
+        font-size: 13px;
+        color: var(--text);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 6px 12px;
+        cursor: pointer;
+      }
+      button:hover, select:hover { border-color: var(--muted); }
+      .group button:hover { background: var(--surface); }
+      button[aria-pressed='true'] { background: var(--accent); color: #fff; }
+      .play { min-width: 74px; }
+      input[type='range'] { flex: 1; min-width: 120px; accent-color: var(--accent); }
+      .frame { font: 600 13px 'JetBrains Mono', ui-monospace, monospace; min-width: 3.5em; }
+      .hint { margin-top: 10px; font-size: 13px; }
+      kbd {
+        font: 12px 'JetBrains Mono', ui-monospace, monospace;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 0 5px;
+      }
+      pre {
+        margin: 0;
+        padding: 18px 20px;
+        overflow-x: auto;
+        font: 13px/1.6 'JetBrains Mono', ui-monospace, monospace;
+        color: var(--text);
+      }
+      pre .c { color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>plottwist</h1>
+          <p>Isometric, animated, interactive charts. All data on this page is synthetic sample data.</p>
+        </div>
+        <div class="group" id="themes" role="group" aria-label="Theme"></div>
+      </header>
+      <p class="hint">
+        Drag to orbit · pinch or <kbd>ctrl</kbd>+scroll to zoom · double-click or <kbd>0</kbd> to reset ·
+        arrow keys rotate · <kbd>space</kbd> plays
+      </p>
+
+      <section>
+        <h2>Bars over time</h2>
+        <p>Monthly active users by region and platform, millions, 2018–2025.</p>
+        <div class="card"><div class="stage"><div class="year" id="bars-year"></div><div class="chart" id="bars"></div></div><div class="controls" id="bars-controls"></div></div>
+      </section>
+
+      <section>
+        <h2>Stacked “city blocks”</h2>
+        <p>Quarterly revenue by region, split by sales channel, $M.</p>
+        <div class="card"><div class="stage"><div class="year" id="stack-year"></div><div class="chart" id="stack"></div></div><div class="controls" id="stack-controls"></div></div>
+      </section>
+
+      <section>
+        <h2>Calendar heatmap</h2>
+        <p>Daily commits over a year. The top view gives the classic flat calendar.</p>
+        <div class="card"><div class="chart" id="calendar"></div><div class="controls" id="calendar-controls"></div></div>
+      </section>
+
+      <section>
+        <h2>Ribbon lines</h2>
+        <p>Monthly site visits by channel, thousands. The front view reads them as ordinary lines.</p>
+        <div class="card"><div class="chart" id="ribbon"></div><div class="controls" id="ribbon-controls"></div></div>
+      </section>
+
+      <section>
+        <h2>Make it yours</h2>
+        <p>Every look on this page is a set of theme tokens. Extend a preset, register your own, or override per chart.</p>
+        <div class="card">
+          <pre><span class="c">// Presets: 'midnight' (default) | 'dark'. Canvases are transparent: the page owns the background.</span>
+new IsoBarChart(el, { data, theme: 'midnight', grid: 'none' });  <span class="c">// grid: 'dots' | 'lines' | 'none'</span>
+
+<span class="c">// Extend one and override any token</span>
+registerTheme('brand', {
+  extends: 'midnight',
+  series: ['#7c5cff', '#ff4f9a', '#2f7bff'],  <span class="c">// categorical, in fixed order</span>
+  scale: 'emerald',                           <span class="c">// or an array of stops, low → high</span>
+  glow: 0.6, pool: 0.4, gradient: 0.5, edge: 0.4,
+  gridStyle: 'dots', floor: '#0c0c14',
+  font: 'Inter, sans-serif', fontMono: 'JetBrains Mono, monospace',
+});
+
+<span class="c">// Pin colours to entities so they never shift when data changes</span>
+new IsoBarChart(el, { data, stack: 'channel', colors: { Online: '#7c5cff', Retail: '#ff4f9a' } });
+
+<span class="c">// Switch at runtime</span>
+chart.setTheme('brand');</pre>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { IsoBarChart, IsoHeatmap, IsoRibbonChart, themes, scales } from '../src/index.js';
+
+      // ---- helpers ------------------------------------------------------------
+
+      const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+      const el = (tag, props = {}) => Object.assign(document.createElement(tag), props);
+      const button = (label, onclick, extra = {}) =>
+        el('button', { textContent: label, onclick, type: 'button', ...extra });
+
+      // Segmented control; returns a setter for the pressed option.
+      function segmented(host, options, onSelect, initial = options[0]) {
+        const group = el('div', { className: 'group', role: 'group' });
+        const buttons = options.map((o) =>
+          button(o[0].toUpperCase() + o.slice(1), () => {
+            press(o);
+            onSelect(o);
+          }),
+        );
+        const press = (o) => buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(options[i] === o)));
+        press(initial);
+        group.append(...buttons);
+        host.append(group);
+        return press;
+      }
+
+      // Play/pause + scrubber + frame label wired to a chart's timeline.
+      function player(chart, host, yearEl) {
+        const play = button('Play', () => chart.toggle(), { className: 'play' });
+        const scrub = el('input', { type: 'range', min: 0, step: 0.001, value: 0 });
+        scrub.setAttribute('aria-label', 'Timeline');
+        const label = el('span', { className: 'frame' });
+        const sync = () => {
+          scrub.max = chart.frames.length - 1;
+          scrub.value = chart.timeline.position;
+          label.textContent = chart.frameLabel ?? '';
+          if (yearEl) yearEl.textContent = chart.frameLabel ?? '';
+        };
+        chart.on('frame', sync);
+        chart.on('play', () => (play.textContent = 'Pause'));
+        chart.on('pause', () => (play.textContent = 'Play'));
+        scrub.oninput = () => {
+          chart.pause();
+          chart.seek(+scrub.value);
+        };
+        sync();
+        host.append(play, scrub, label);
+      }
+
+      const views = (chart, host) =>
+        segmented(host, ['iso', 'top', 'front'], (v) => (v === 'iso' ? chart.resetView() : chart.setView(v)));
+
+      // ---- theme --------------------------------------------------------------
+
+      let themeName = 'midnight';
+      const pageAura = { midnight: 'rgba(110, 70, 255, 0.16)', dark: 'rgba(110, 70, 255, 0.07)' };
+      try {
+        themeName = localStorage.getItem('plottwist-theme') ?? themeName;
+      } catch {}
+      themeName = new URLSearchParams(location.search).get('theme') ?? themeName;
+      if (!themes[themeName]) themeName = 'midnight';
+
+      const charts = [];
+      function applyTheme(name) {
+        themeName = name;
+        const t = themes[name];
+        const root = document.documentElement.style;
+        root.setProperty('--bg', t.surface);
+        root.setProperty('--card', t.surface);
+        root.setProperty('--surface', t.floor);
+        root.setProperty('--border', t.grid);
+        root.setProperty('--text', t.text);
+        root.setProperty('--muted', t.textMuted);
+        root.setProperty('--accent', t.series[0]);
+        root.setProperty('--aura', pageAura[name] ?? 'transparent');
+        root.setProperty('color-scheme', t.mode);
+        charts.forEach((c) => c.setTheme(name));
+        try {
+          localStorage.setItem('plottwist-theme', name);
+        } catch {}
+      }
+      segmented(document.querySelector('#themes'), ['midnight', 'dark'], applyTheme, themeName);
+      applyTheme(themeName);
+
+      // ---- 1. bars over time ----------------------------------------------------
+
+      {
+        const regions = ['N. America', 'Europe', 'Asia Pacific', 'LatAm', 'MEA'];
+        const platforms = ['Web', 'iOS', 'Android', 'Desktop'];
+        const years = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025];
+        const make = (seed) => {
+          const r = rng(seed);
+          const curves = regions.flatMap((region) =>
+            platforms.map((platform) => ({
+              region,
+              platform,
+              base: 4 + r() * 30,
+              growth: (platform === 'Desktop' ? -0.06 : 0.04) + r() * 0.22,
+            })),
+          );
+          return years.map((year, t) => ({
+            label: year,
+            data: curves.map((c) => ({
+              region: c.region,
+              platform: c.platform,
+              users: c.base * (1 + c.growth) ** t * (0.92 + r() * 0.16),
+            })),
+          }));
+        };
+        let seed = 42;
+        const chart = new IsoBarChart('#bars', {
+          frames: make(seed),
+          x: 'region',
+          y: 'platform',
+          value: 'users',
+          theme: themeName,
+          format: (v) => `${v.toFixed(1)}M`,
+          frameDuration: 1200,
+          ariaLabel: 'Isometric bar chart of monthly active users by region and platform over time',
+        });
+        const host = document.querySelector('#bars-controls');
+        player(chart, host, document.querySelector('#bars-year'));
+        views(chart, host);
+        host.append(button('Shuffle', () => chart.setFrames(make(++seed * 7919))));
+        charts.push(chart);
+      }
+
+      // ---- 2. stacked city blocks -------------------------------------------------
+
+      {
+        const regions = ['North', 'Central', 'South'];
+        const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+        const channels = ['Online', 'Retail', 'Partner'];
+        const years = [2022, 2023, 2024, 2025];
+        const make = (seed) => {
+          const r = rng(seed);
+          const base = regions.map(() => channels.map(() => 6 + r() * 14));
+          return years.map((year, t) => ({
+            label: year,
+            data: regions.flatMap((region, ri) =>
+              quarters.flatMap((quarter, qi) =>
+                channels.map((channel, ci) => ({
+                  region,
+                  quarter,
+                  channel,
+                  // Online grows, retail shrinks, Q4 is seasonal.
+                  revenue:
+                    base[ri][ci] * (1 + [0.25, -0.08, 0.1][ci] * t) * (qi === 3 ? 1.35 : 1) * (0.9 + r() * 0.2),
+                })),
+              ),
+            ),
+          }));
+        };
+        let seed = 7;
+        const chart = new IsoBarChart('#stack', {
+          frames: make(seed),
+          x: 'quarter',
+          y: 'region',
+          stack: 'channel',
+          value: 'revenue',
+          theme: themeName,
+          barWidth: 0.56,
+          format: (v) => `$${v.toFixed(1)}M`,
+          ariaLabel: 'Stacked isometric bars of quarterly revenue by region and channel',
+        });
+        const host = document.querySelector('#stack-controls');
+        player(chart, host, document.querySelector('#stack-year'));
+        views(chart, host);
+        host.append(button('Shuffle', () => chart.setFrames(make(++seed * 104729))));
+        charts.push(chart);
+      }
+
+      // ---- 3. calendar heatmap ---------------------------------------------------
+
+      {
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const year = 2025;
+        const jan1 = new Date(Date.UTC(year, 0, 1));
+        const offset = (jan1.getUTCDay() + 6) % 7; // Monday = 0
+        const make = (seed) => {
+          const r = rng(seed);
+          const data = [];
+          let streak = 0;
+          for (let d = 0; d < 365; d++) {
+            const date = new Date(jan1.getTime() + d * 864e5);
+            const wd = (date.getUTCDay() + 6) % 7;
+            if (r() < 0.04) streak = 4 + Math.floor(r() * 8);
+            const busy = streak-- > 0 ? 2.2 : 1;
+            const weekend = wd >= 5 ? 0.25 : 1;
+            const v = r() < 0.12 ? 0 : Math.round(r() * 9 * busy * weekend);
+            data.push({ week: Math.floor((d + offset) / 7), day: days[wd], date, commits: v });
+          }
+          return data;
+        };
+        // Label the week containing the 1st of each month.
+        const monthAt = new Map();
+        for (let m = 0; m < 12; m++) {
+          const doy = Math.round((Date.UTC(year, m, 1) - jan1) / 864e5);
+          monthAt.set(Math.floor((doy + offset) / 7), months[m]);
+        }
+        let seed = 3;
+        const chart = new IsoHeatmap('#calendar', {
+          data: make(seed),
+          x: 'week',
+          y: 'day',
+          value: 'commits',
+          theme: themeName,
+          xDomain: Array.from({ length: 53 }, (_, i) => i),
+          yDomain: days,
+          xTicks: (week) => monthAt.get(week) ?? null,
+          yTicks: (day, i) => (i % 2 === 0 ? day : null),
+          label: (d) =>
+            d.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }),
+          valueLabel: 'Commits',
+          format: (v) => String(Math.round(v)),
+          camera: { yaw: 0.38, pitch: 0.82 },
+          ariaLabel: 'Isometric calendar heatmap of daily commits',
+        });
+        const host = document.querySelector('#calendar-controls');
+        views(chart, host);
+        const scale = el('select', { ariaLabel: 'Colour scale' });
+        scale.append(el('option', { value: '', textContent: 'Theme scale' }));
+        for (const name of Object.keys(scales)) scale.append(el('option', { value: name, textContent: name }));
+        scale.onchange = () => {
+          chart.options.colorScale = scale.value || undefined;
+          chart.invalidate();
+        };
+        const extrude = button('Flat tiles', () => {
+          chart.extrude = !chart.extrude;
+          extrude.textContent = chart.extrude ? 'Flat tiles' : 'Extrude';
+          chart.invalidate();
+        });
+        host.append(scale, extrude, button('Shuffle', () => chart.setData(make(++seed * 31337))));
+        charts.push(chart);
+      }
+
+      // ---- 4. ribbons ------------------------------------------------------------
+
+      {
+        const channels = ['Search', 'Social', 'Email', 'Direct'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const periods = Array.from({ length: 36 }, (_, i) => `${months[i % 12]} ${23 + Math.floor(i / 12)}`);
+        const make = (seed) => {
+          const r = rng(seed);
+          return channels.flatMap((channel, c) => {
+            const base = 20 + r() * 40;
+            const trend = -0.4 + r() * 1.6;
+            const phase = r() * Math.PI * 2;
+            return periods.map((month, i) => ({
+              month,
+              channel,
+              visits: Math.max(2, base + trend * i + Math.sin(i / 1.9 + phase) * (6 + c * 2) + (r() - 0.5) * 6),
+            }));
+          });
+        };
+        let seed = 11;
+        const chart = new IsoRibbonChart('#ribbon', {
+          data: make(seed),
+          x: 'month',
+          y: 'channel',
+          value: 'visits',
+          theme: themeName,
+          xTicks: (m) => (m.startsWith('Jan') || m.startsWith('Jul') ? m : null),
+          format: (v) => `${v.toFixed(1)}k`,
+          camera: { yaw: 0.32, pitch: 0.62 },
+          ariaLabel: 'Ribbon chart of monthly site visits by channel',
+        });
+        const host = document.querySelector('#ribbon-controls');
+        views(chart, host);
+        host.append(button('Shuffle', () => chart.setData(make(++seed * 2477))));
+        charts.push(chart);
+      }
+
+      // Canvas text doesn't reflow when web fonts arrive; redraw once they do.
+      document.fonts?.ready.then(() => charts.forEach((c) => c.invalidate()));
+
+      window.charts = charts; // handy for poking at them from the console
+    </script>
+  </body>
+</html>
