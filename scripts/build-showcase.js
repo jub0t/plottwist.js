@@ -1,5 +1,5 @@
 // Renders the README showcase image with headless Chrome:
-//   docs/showcase.png   every demo chart on a transparent background
+//   docs/preview.png   every demo chart on a transparent background
 //
 //   npm run showcase
 
@@ -14,8 +14,8 @@ try {
   const url = await chrome.evaluate('window.compose()');
   const png = Buffer.from(url.split(',')[1], 'base64');
   await mkdir(join(root, 'docs'), { recursive: true });
-  await writeFile(join(root, 'docs', 'showcase.png'), png);
-  console.log(`wrote docs/showcase.png (${(png.length / 1024).toFixed(0)} KB)`);
+  await writeFile(join(root, 'docs', 'preview.png'), png);
+  console.log(`wrote docs/preview.png (${(png.length / 1024).toFixed(0)} KB)`);
 } finally {
   await chrome.close();
   server.close();

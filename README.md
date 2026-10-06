@@ -2,7 +2,7 @@
 
 Isometric, animated, interactive charts for the web. Zero runtime dependencies, Canvas 2D.
 
-<img alt="plottwist charts: a hex world map, an extruded region map, 3D bars over time, stacked city blocks, ribbon lines and a calendar heatmap" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/showcase.png" />
+<img alt="plottwist charts: hex and region maps, 3D bars, stacked blocks, ribbons, a bar chart race, a calendar heatmap, a terrain surface in voxel and wireframe styles, a seasonal helix, a Galton board, a cube waffle, liquid tanks, a balance scale and icebergs" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/preview.png" />
 
 <p>
   <img width="49%" alt="A 3D bar chart race of app users from 2010 to 2025" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/race.webp" />
@@ -154,7 +154,7 @@ npm run test:types           # type definitions against example usage
 npm run test:visual          # pixel comparison with test/visual/baseline (-- --update to accept)
 npm run test:export          # export every format and check it decodes (uses ffprobe if installed)
 npm run build                # dist/ bundles
-npm run showcase             # re-render the README image (docs/showcase.png)
+npm run showcase             # re-render the README image (docs/preview.png)
 npm run clips                # re-render the README clips (docs/*.webp, transparent)
 node scripts/build-land.js   # regenerate src/geo/land.js from Natural Earth
 node scripts/build-countries.js  # regenerate src/geo/countries-data.js
