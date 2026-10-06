@@ -560,6 +560,7 @@ chart.setTheme('brand');</pre>
         // Each style is a handful of options on the same chart.
         const styles = {
           solid: {},
+          relief: { colorScale: 'terrain', shadows: true, contourLabels: true },
           topo: { bands: true, contours: 10, colorScale: 'emerald' },
           wireframe: { style: 'wireframe', contours: false },
           water: { water: { value: 35, label: 'Dead zone' }, peaks: 3 },

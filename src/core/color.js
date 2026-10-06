@@ -19,6 +19,10 @@ export const scales = {
   orange: ['#fa9a52', '#f2741f', '#d95c0a', '#b54a0a', '#8f3a0c', '#6a2610'],
   magenta: ['#f08cbb', '#e862a2', '#d63f87', '#b8276f', '#8d1855', '#5b0b2f'],
   teal: ['#45c4b1', '#22ae9a', '#0f9887', '#0b8073', '#0d675e', '#134e4a'],
+  // Natural hypsometric tints (after Imhof), low -> high: deep green
+  // lowlands through olive and sand to pale summits. Already dark-low and
+  // light-high, so it never reverses.
+  terrain: ['#24493d', '#3e6b4f', '#6f8f5c', '#a7a874', '#cdbb8f', '#e6d9bd', '#f6f1e6'],
 };
 
 const base = {
@@ -102,7 +106,7 @@ export function resolveTheme(theme = 'midnight') {
 
 export function sequentialStops(theme, scale = theme.scale) {
   const stops = Array.isArray(scale) ? scale : scales[scale] ?? scales.violet;
-  return theme.mode === 'dark' && !Array.isArray(scale) ? [...stops].reverse() : stops;
+  return theme.mode === 'dark' && !Array.isArray(scale) && scale !== 'terrain' ? [...stops].reverse() : stops;
 }
 
 export function parseHex(hex) {

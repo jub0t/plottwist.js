@@ -65,7 +65,8 @@ export interface Theme {
 
 export type ThemeName = 'midnight' | 'dark' | (string & {});
 export type ThemeInput = ThemeName | (Partial<Theme> & { extends?: ThemeName });
-export type ScaleName = 'violet' | 'blue' | 'emerald' | 'orange' | 'magenta' | 'teal';
+/** 'terrain' is a natural ramp from green lowlands to pale peaks and never reverses on dark themes. */
+export type ScaleName = 'violet' | 'blue' | 'emerald' | 'orange' | 'magenta' | 'teal' | 'terrain';
 
 export interface TooltipRow {
   label: string;
@@ -367,6 +368,18 @@ export interface IsoSurfaceOptions<D> extends IsoHeatmapOptions<D> {
   peaks?: number;
   /** Solid walls down the near edges. Default true. */
   skirt?: boolean;
+  /** Aerial perspective, 0..1: lowlands lose contrast and fade toward the floor. Default 0.35. */
+  haze?: number;
+  /** Valley occlusion, 0..1: creases and basins darken. Default 0.5. */
+  occlusion?: number;
+  /** 'illuminated' (Tanaka): light on slopes facing the light, dark away, heavier index lines. Default 'illuminated'. */
+  contourStyle?: 'illuminated' | 'plain';
+  /** Label the index contours with their values. Default false. */
+  contourLabels?: boolean;
+  /** Cast shadows from the peaks: true (0.45) or a strength 0..1. Default off. */
+  shadows?: boolean | number;
+  /** Sun elevation for shadows, degrees. Default 24. */
+  shadowAngle?: number;
 }
 
 /** A lit, coloured surface over a grid of values, with contour lines. */

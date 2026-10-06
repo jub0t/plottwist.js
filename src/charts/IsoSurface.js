@@ -16,12 +16,30 @@
 //   water: 30 | { value, color, opacity, label }  a level that floods the lows
 //   peaks: 3                  label the highest local maxima
 //   skirt: false              no solid walls along the edges
+//
+// Relief rendering (cartographic conventions, all on by default but shadows):
+//   haze: 0.35                aerial perspective: lowlands lose contrast and
+//                             fade toward the floor, peaks keep full detail
+//   occlusion: 0.5            valleys and creases darken (less open sky)
+//   contourStyle: 'illuminated'|'plain'  Tanaka contours: light on slopes facing
+//                             the light, dark on those facing away; every fifth
+//                             is an index line; contourLabels: true labels them
+//   shadows: 0.45             cast shadows from the peaks (default off);
+//                             shadowAngle: sun elevation in degrees (24)
+//   colorScale: 'terrain'     a natural ramp: deep green lowlands to pale peaks
 
 import { IsoHeatmap } from './IsoHeatmap.js';
 import { niceTicks } from '../core/grid-chart.js';
 import { faceBrightness } from '../core/shapes.js';
 import { parseHex, rampAt, shade } from '../core/color.js';
 import { claim } from '../core/stage.js';
+
+// Light direction in camera space, as in camera.js.
+const LIGHT_CAMERA = (() => {
+  const v = [-0.45, 0.55, 0.75];
+  const l = Math.hypot(...v);
+  return v.map((x) => x / l);
+})();
 
 export class IsoSurface extends IsoHeatmap {
   constructor(container, options = {}) {
@@ -145,7 +163,115 @@ export class IsoSurface extends IsoHeatmap {
         maxSlope = Math.max(maxSlope, p.slope);
       }
     }
-    return { verts, mx, my, maxSlope };
+    const mesh = { verts, mx, my, maxSlope };
+    this.occlude(mesh, k);
+    return mesh;
+  }
+
+  // Valley occlusion: a vertex lower than the terrain around it sees less
+  // sky. Its depth below a box-blurred copy of the surface darkens it.
+  occlude(mesh, k) {
+    const strength = this.options.occlusion ?? 0.5;
+    const { verts, mx, my } = mesh;
+    if (!strength) {
+      for (const row of verts) for (const p of row) p.ao = 1;
+      return;
+    }
+    const r = Math.max(1, Math.round(k * 2.5));
+    // Separable box blur of z.
+    const tmp = Array.from({ length: mx }, () => new Float64Array(my));
+    for (let a = 0; a < mx; a++) {
+      for (let b = 0; b < my; b++) {
+        let sum = 0;
+        let n = 0;
+        for (let d = -r; d <= r; d++) {
+          const q = verts[Math.max(0, Math.min(mx - 1, a + d))][b];
+          sum += q.z;
+          n++;
+        }
+        tmp[a][b] = sum / n;
+      }
+    }
+    const scale = Math.max(1e-6, this.maxHeight * 0.12);
+    for (let a = 0; a < mx; a++) {
+      for (let b = 0; b < my; b++) {
+        let sum = 0;
+        let n = 0;
+        for (let d = -r; d <= r; d++) {
+          sum += tmp[a][Math.max(0, Math.min(my - 1, b + d))];
+          n++;
+        }
+        const p = verts[a][b];
+        const depth = Math.max(0, sum / n - p.z) / scale;
+        p.ao = 1 - strength * 0.55 * Math.min(1, depth);
+      }
+    }
+  }
+
+  // Cast shadows: march from each vertex toward the light over the height
+  // field; terrain above the ray shades it, softly near the edge.
+  castShadows(mesh) {
+    const strength = this.options.shadows === true ? 0.45 : +this.options.shadows || 0;
+    const { verts, mx, my } = mesh;
+    for (const row of verts) for (const p of row) p.shadow = 0;
+    if (!strength) return;
+    // The light's direction, but a low sun (default 24 degrees) so peaks
+    // throw shadows that read.
+    const Lw = this.lightWorld();
+    const h0 = Math.hypot(Lw[0], Lw[1]);
+    if (h0 < 1e-3) return;
+    const elev = ((this.options.shadowAngle ?? 24) * Math.PI) / 180;
+    const L = [(Lw[0] / h0) * Math.cos(elev), (Lw[1] / h0) * Math.cos(elev), Math.sin(elev)];
+    const horiz = Math.cos(elev);
+    const x0 = verts[0][0].x;
+    const y0 = verts[0][0].y;
+    const dx = verts[1][0].x - x0 || 1;
+    const dy = verts[0][1].y - y0 || 1;
+    const heightAt = (x, y) => {
+      const fa = (x - x0) / dx;
+      const fb = (y - y0) / dy;
+      if (fa < 0 || fb < 0 || fa > mx - 1 || fb > my - 1) return null;
+      const a = Math.min(mx - 2, Math.floor(fa));
+      const b = Math.min(my - 2, Math.floor(fb));
+      const u = fa - a;
+      const v = fb - b;
+      return (
+        verts[a][b].z * (1 - u) * (1 - v) + verts[a + 1][b].z * u * (1 - v) +
+        verts[a][b + 1].z * (1 - u) * v + verts[a + 1][b + 1].z * u * v
+      );
+    };
+    const step = Math.min(Math.abs(dx), Math.abs(dy));
+    const ux = (L[0] / horiz) * step;
+    const uy = (L[1] / horiz) * step;
+    const uz = (L[2] / horiz) * step;
+    const soft = this.maxHeight * 0.04;
+    for (const row of verts) {
+      for (const p of row) {
+        let best = 0;
+        let x = p.x;
+        let y = p.y;
+        let z = p.z + 0.02;
+        for (let i = 0; i < 200; i++) {
+          x += ux;
+          y += uy;
+          z += uz;
+          const h = heightAt(x, y);
+          if (h == null || z > this.maxHeight + this.floatHeight) break;
+          if (h > z) best = Math.max(best, Math.min(1, (h - z) / soft));
+          if (best >= 1) break;
+        }
+        p.shadow = best * strength;
+      }
+    }
+  }
+
+  // The camera-relative light (see camera.js) as a world-space direction.
+  lightWorld() {
+    const C = this.camera;
+    const [r, t, up] = LIGHT_CAMERA;
+    const v = t * C._cp - up * C._sp;
+    const nz = t * C._sp + up * C._cp;
+    return [r * C._cy + v * C._sy, -r * C._sy + v * C._cy, nz];
   }
 
   // Ramp position in [0, 1] for a vertex (before banding).
@@ -187,6 +313,7 @@ export class IsoSurface extends IsoHeatmap {
     this._mesh = mesh;
     const { camera: C, renderer: R, theme } = this;
     for (const row of mesh.verts) for (const p of row) p.k = faceBrightness(C, theme, p.n);
+    this.castShadows(mesh);
 
     if (this.floatHeight > 0) this.drawFloorMap(mesh);
 
@@ -211,6 +338,7 @@ export class IsoSurface extends IsoHeatmap {
 
     if (this.options.skirt !== false) this.drawSkirts(mesh);
     if (water && this.options.skirt !== false && this.floatHeight === 0) this.drawWaterSides(mesh, water);
+    this.drawContourLabels();
     this.drawPeaks();
     const hovered = this.cellOf(this.hovered);
     if (hovered && this.focus.value > 0) this.drawProbe(hovered);
@@ -232,6 +360,10 @@ export class IsoSurface extends IsoHeatmap {
     const meshColor = this.options.meshColor;
     const flat = this.options.shading === 'flat';
     const clipped = lo !== -Infinity || hi !== Infinity;
+    const haze = this.options.haze ?? 0.35;
+    const hazeRgb = parseHex(theme.floor);
+    const illuminated = (this.options.contourStyle ?? 'illuminated') === 'illuminated';
+    const labelSpots = (this._labelSpots ??= []);
 
     for (const [a, b] of quads) {
       const c = [V[a][b], V[a + 1][b], V[a + 1][b + 1], V[a][b + 1]];
@@ -251,6 +383,10 @@ export class IsoSurface extends IsoHeatmap {
         let k = n ? faceBrightness(C, theme, n) : (tri[0].k + tri[1].k + tri[2].k) / 3;
         // Banded colours carry the reading; soften the lighting so they show.
         if (this.options.bands) k = 0.45 + 0.55 * k;
+        // Occlusion and cast shadow darken; haze flattens the lowlands.
+        k *= (tri[0].ao + tri[1].ao + tri[2].ao) / 3;
+        k *= 1 - (tri[0].shadow + tri[1].shadow + tri[2].shadow) / 3;
+        const height = (tri[0].v + tri[1].v + tri[2].v) / (3 * this.maxValue);
         const t = (this.tone(tri[0], mesh) + this.tone(tri[1], mesh) + this.tone(tri[2], mesh)) / 3;
         const rgb = this.rampColor(t);
         if (this.options.bands && !wire && this.options.colorBy !== 'slope') {
@@ -258,29 +394,58 @@ export class IsoSurface extends IsoHeatmap {
           for (const [b0, b1, color] of this.bandRanges()) {
             const piece = clipBy(poly, 'v', b0, b1);
             if (piece.length < 3) continue;
-            const f = shade(color, k);
+            const f = this.relief(color, k, height, haze, hazeRgb);
             R.polygon(piece.map(P), f, f, 0.6);
           }
         } else {
-          const fill = wire ? theme.surface : shade(rgb, k);
+          const fill = wire ? theme.surface : this.relief(rgb, k, height, haze, hazeRgb);
           R.polygon(poly.map(P), fill, fill, 0.6);
         }
 
         if (levels.length) {
-          ctx.beginPath();
+          // Illuminated (Tanaka) contours: lines on slopes facing the light
+          // are light, on slopes facing away dark, and widest where the
+          // slope faces the light (or away from it) squarely.
+          // Facing from the averaged vertex normals: per-facet normals
+          // alternate across the mesh diagonal and would stipple the line.
+          const avgN = [0, 1, 2].map((d) => tri[0].n[d] + tri[1].n[d] + tri[2].n[d]);
+          const facing = illuminated ? this.facing(avgN.map((x) => x / (Math.hypot(...avgN) || 1))) : 0;
+          const groups = [[], []]; // ordinary, index
           for (const level of levels) {
             const z = this.z(level) + lift;
             if (z < lo || z >= hi) continue;
             const seg = isoSegment(tri, level);
             if (!seg) continue;
-            const s0 = C.project(seg[0].x, seg[0].y, z);
-            const s1 = C.project(seg[1].x, seg[1].y, z);
-            ctx.moveTo(s0.x, s0.y);
-            ctx.lineTo(s1.x, s1.y);
+            groups[this.isIndex(level) ? 1 : 0].push([C.project(seg[0].x, seg[0].y, z), C.project(seg[1].x, seg[1].y, z), level]);
           }
-          ctx.strokeStyle = wire ? shade(rgb, 1.25, 0.5) : contourColor;
-          ctx.lineWidth = contourWidth;
-          ctx.stroke();
+          ctx.lineCap = 'butt';
+          groups.forEach((segs, isIndex) => {
+            if (!segs.length) return;
+            ctx.beginPath();
+            for (const [s0, s1] of segs) {
+              ctx.moveTo(s0.x, s0.y);
+              ctx.lineTo(s1.x, s1.y);
+            }
+            const weight = isIndex ? 1.8 : 1;
+            if (wire) {
+              ctx.strokeStyle = shade(rgb, 1.25, 0.5);
+              ctx.lineWidth = contourWidth;
+            } else if (illuminated && !this.options.contourColor) {
+              // Opaque, mixed from the facet's own colour: translucent
+              // strokes would double up where segments meet.
+              const base = parseRgb(this.relief(rgb, k, height, haze, hazeRgb));
+              const a = 0.28 + 0.5 * Math.abs(facing);
+              const toward = facing >= 0 ? [255, 255, 255] : [8, 5, 24];
+              ctx.strokeStyle = `rgb(${base.map((c, i) => Math.round(c + (toward[i] - c) * Math.min(0.85, a))).join(',')})`;
+              ctx.lineWidth = contourWidth * weight * (0.6 + 0.9 * Math.abs(facing));
+              ctx.lineCap = 'round';
+            } else {
+              ctx.strokeStyle = contourColor;
+              ctx.lineWidth = contourWidth * weight;
+            }
+            ctx.stroke();
+            if (isIndex && this.options.contourLabels && !wire) for (const seg of segs) labelSpots.push({ seg, height, depth: depth(tri) });
+          });
         }
       }
       if (meshOn) {
@@ -303,6 +468,65 @@ export class IsoSurface extends IsoHeatmap {
           R.hit([[p, half(next), mid, half(prev)].map(P)], p.cell);
         });
       }
+    }
+  }
+
+  // Final colour of a facet: lit ramp colour, then aerial perspective. Low
+  // ground loses lighting contrast and drifts toward the floor colour, so
+  // peaks stand forward with full detail (Imhof).
+  relief(rgb, k, height, haze, hazeRgb) {
+    const h = haze * (1 - Math.max(0, Math.min(1, height)));
+    const kk = 1 + (k - 1) * (1 - 0.6 * h);
+    const lit = kk <= 1 ? rgb.map((c) => c * kk) : rgb.map((c) => c + (255 - c) * Math.min(1, kk - 1));
+    const m = 0.45 * h;
+    return `rgb(${lit.map((c, i) => Math.round(Math.max(0, Math.min(255, c + (hazeRgb[i] - c) * m)))).join(',')})`;
+  }
+
+  // How squarely a slope faces the light, -1 (away) to 1 (toward), from the
+  // horizontal part of its normal, weighted by steepness.
+  facing(n) {
+    const c = this.camera.toCamera(...n);
+    const [lr, lt] = LIGHT_CAMERA;
+    const lh = Math.hypot(lr, lt) || 1;
+    const ch = Math.hypot(c[0], c[1]);
+    if (ch < 1e-6) return 0;
+    const cos = (c[0] * lr + c[1] * lt) / (lh * ch);
+    return cos * Math.min(1, ch * 2.5);
+  }
+
+  // Index contours, drawn heavier: every fifth step, or every second when
+  // there are only a few levels.
+  isIndex(level) {
+    const lv = this.levels;
+    if (lv.length < 2) return false;
+    const step = lv[1] - lv[0];
+    const every = lv.length >= 8 ? 5 : 2;
+    return Math.abs(Math.round(level / step) % every) === 0;
+  }
+
+  // options.contourLabels: index contour values on the nearest, flattest
+  // stretches, a few per level.
+  drawContourLabels() {
+    const spots = this._labelSpots ?? [];
+    this._labelSpots = [];
+    if (!spots.length) return;
+    const { renderer: R, theme } = this;
+    const placed = [];
+    const perLevel = new Map();
+    spots.sort((a, b) => b.depth - a.depth);
+    for (const { seg } of spots) {
+      const [s0, s1, level] = seg;
+      const count = perLevel.get(level) ?? 0;
+      if (count >= 2) continue;
+      const angle = Math.atan2(s1.y - s0.y, s1.x - s0.x);
+      if (Math.abs(Math.sin(angle)) > 0.45) continue; // only gently sloping runs
+      const x = (s0.x + s1.x) / 2;
+      const y = (s0.y + s1.y) / 2;
+      const text = this.format(level);
+      const w = R.measure(text, 10, 600, true) / 2 + 3;
+      if (!claim(placed, { l: x - w - 40, r: x + w + 40, t: y - 8, b: y + 8 })) continue;
+      perLevel.set(level, count + 1);
+      R.text(text, x, y, { color: theme.markText ?? theme.text, size: 10, weight: 600, mono: true, halo: theme.markHalo ?? theme.surface });
     }
   }
 
@@ -360,6 +584,30 @@ export class IsoSurface extends IsoHeatmap {
     const opacity = water.opacity ?? 0.42;
     const pts = [C.project(a.x, a.y, zw), C.project(b.x, a.y, zw), C.project(b.x, b.y, zw), C.project(a.x, b.y, zw)];
     R.polygon(pts, `rgba(${rgb.join(',')},${opacity})`, `rgba(${rgb.join(',')},0.9)`, 1.25);
+    // Specular glint: a soft sheen on the water toward the light, clipped
+    // to the water's surface.
+    if (water.glint !== false) {
+      const ctx = R.ctx;
+      const L = this.lightWorld();
+      const gx = a.x + (b.x - a.x) * (0.5 + 0.28 * Math.sign(L[0] || 1) * Math.min(1, Math.abs(L[0]) * 2));
+      const gy = a.y + (b.y - a.y) * (0.5 + 0.28 * Math.sign(L[1] || 1) * Math.min(1, Math.abs(L[1]) * 2));
+      const c = C.project(gx, gy, zw);
+      const span = Math.hypot(pts[0].x - pts[2].x, pts[0].y - pts[2].y);
+      ctx.save();
+      ctx.beginPath();
+      pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+      ctx.closePath();
+      ctx.clip();
+      ctx.translate(c.x, c.y);
+      ctx.scale(1, 0.45);
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, span * 0.32);
+      grad.addColorStop(0, 'rgba(255,255,255,0.5)');
+      grad.addColorStop(0.35, 'rgba(255,255,255,0.18)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(-span, -span, span * 2, span * 2);
+      ctx.restore();
+    }
     // Label at the leftmost corner, like a reference plane.
     const left = pts.reduce((p, q) => (q.x < p.x ? q : p));
     const text = `${water.label ? `${water.label} ` : ''}${this.format(water.value)}`;
@@ -559,3 +807,5 @@ function clipBy(poly, key, lo, hi) {
   if (hi !== Infinity && out.length) out = cut(out, (x) => x <= hi, hi);
   return out;
 }
+
+const parseRgb = (str) => str.match(/\d+/g).slice(0, 3).map(Number);

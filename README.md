@@ -56,9 +56,10 @@ TypeScript types are included; charts are generic over your record type, so acce
 - `IsoHexMap`: rounded hexagons over the world (or `bounds`), data binned by exact coordinates; arcs and callouts
 - `IsoRegionMap`: regions at any level (countries, states, provinces, counties, districts, territories)
   extruded by value, a 3D choropleth. See below.
-- `IsoSurface`: a lit terrain over a grid of values, with contours. Styles include smooth or topo
-  bands, wireframe, a `water` level that floods the lows, a `float`ing model over its own map, and
-  labelled `peaks`
+- `IsoSurface`: a lit terrain over a grid of values, drawn with cartographic relief conventions:
+  aerial-perspective haze, valley occlusion, illuminated (Tanaka) contours with index lines, and
+  optional cast `shadows` and a natural `'terrain'` palette. Styles include topo bands, wireframe, a
+  `water` level that floods the lows, a `float`ing model over its own map, and labelled `peaks`
 - `IsoWaffleChart`: a stack of cubes per category, one per `unit`; between frames, cubes fly from
   shrinking stacks to growing ones
 - `IsoTankChart`: values as liquid in glass tanks with `capacity` and `target`; changes pour in,

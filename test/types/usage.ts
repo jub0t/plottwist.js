@@ -120,3 +120,4 @@ export { reservoirs };
 const board = new IsoGaltonChart<{ minutes: number; mode: string }>('#g', { data: [], value: 'minutes', color: 'mode', bins: 12, domain: [0, 60] });
 board.on('hover', (b) => (b ? board.counts[b.bin] : 0));
 export { board };
+terrain.reconfigure({ haze: 0.5, occlusion: 0.4, contourStyle: 'illuminated', contourLabels: true, shadows: true, shadowAngle: 20, colorScale: 'terrain' });
