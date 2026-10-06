@@ -9,6 +9,7 @@
 import { muxMp4 } from './mp4.js';
 import { muxWebm } from './webm.js';
 import { GifEncoder } from './gif.js';
+import { Tween } from '../core/animation.js';
 
 const TAU = Math.PI * 2;
 const MIME = { mp4: 'video/mp4', webm: 'video/webm', gif: 'image/gif', png: 'image/png' };
@@ -308,7 +309,7 @@ function snapTweens(chart) {
   const visit = (v, depth) => {
     if (!v || typeof v !== 'object' || seen.has(v) || depth > 3) return;
     seen.add(v);
-    if ('target' in v && 'value' in v && typeof v.tick === 'function') {
+    if (v instanceof Tween) {
       if (v.value !== v.target) v.set(v.target);
       return;
     }
