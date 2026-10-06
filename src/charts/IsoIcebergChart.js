@@ -12,15 +12,15 @@ import { parseHex, rgbString, shade } from '../core/color.js';
 import { faceBrightness } from '../core/shapes.js';
 import { accessor, claim, framesOf } from '../core/stage.js';
 
-const SIDES = 9;
+const SIDES = 11;
 const TOTAL_HEIGHT = 6; // world height of the biggest berg, tip to peak
 // Ring profiles: [fraction of the part's height, radius factor].
-const BELOW = [[0, 0.2], [0.22, 0.7], [0.5, 1], [0.78, 0.97], [1, 0.86]];
-const ABOVE = [[0, 0.86], [0.38, 0.66], [0.72, 0.38], [1, 0.1]];
+const BELOW = [[0, 0.12], [0.14, 0.52], [0.32, 0.86], [0.52, 1], [0.7, 0.92], [0.86, 0.97], [1, 0.84]];
+const ABOVE = [[0, 0.84], [0.22, 0.72], [0.5, 0.52], [0.78, 0.3], [1, 0.08]];
 
 export class IsoIcebergChart extends Chart {
   constructor(container, options = {}) {
-    super(container, { camera: { yaw: 0.3, pitch: 0.3 }, frameDuration: 2000, ...options });
+    super(container, { camera: { yaw: 0.26, pitch: 0.2 }, frameDuration: 2000, ...options });
     const o = this.options;
     this.key = accessor(o.key ?? 'name');
     this.above = accessor(o.above ?? 'above');
@@ -69,7 +69,7 @@ export class IsoIcebergChart extends Chart {
     // The sea is as deep as the deepest berg could reach.
     let deepest = 0;
     for (const f of this.frames) for (const [, b] of f.values) deepest = Math.max(deepest, b[1]);
-    this.depth = (deepest / this.maxTotal) * TOTAL_HEIGHT + 0.5;
+    this.depth = (deepest / this.maxTotal) * TOTAL_HEIGHT + 1.3; // room for the labels under the tips
     this.timeline.length = this.frames.length;
     this.timeline.seek(Math.min(this.timeline.position, this.frames.length - 1));
     this.invalidate();
@@ -135,7 +135,8 @@ export class IsoIcebergChart extends Chart {
     const ring = (z, k, j) =>
       b.shape.angles.map((a, v) => {
         const rr = r * k * b.shape.jitter[j][v];
-        return [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, z];
+        const aa = a + b.shape.twist[j];
+        return [cx + Math.cos(aa) * rr, cy + Math.sin(aa) * rr, z];
       });
     const down = Math.max(0.05, b.down);
     const up = Math.max(0.05, b.up);
@@ -153,7 +154,11 @@ export class IsoIcebergChart extends Chart {
   }
 
   waterRgb() {
-    return parseHex(this.options.waterColor ?? (this.theme.mode === 'dark' ? '#1d6fa8' : '#5aa9e0'));
+    return parseHex(this.options.waterColor ?? '#1593c9');
+  }
+
+  deepRgb() {
+    return parseHex(this.options.deepColor ?? '#0a1f4d');
   }
 
   draw() {
@@ -170,43 +175,75 @@ export class IsoIcebergChart extends Chart {
 
     const P = (x, y, z) => C.project(x, y, z);
     const water = this.waterRgb();
+    const deep = this.deepRgb();
     const ctx = R.ctx;
     const order = [...this.bergs].sort((a, b) => C.groundDepth(...this.center(a)) - C.groundDepth(...this.center(b)));
     const geo = new Map(order.map((b) => [b, this.rings(b)]));
-
-    // Seabed and the far walls of the water, seen through the near ones.
-    R.polygon([P(-hx, -hy, -D), P(hx, -hy, -D), P(hx, hy, -D), P(-hx, hy, -D)], shade(water, 0.35), null);
     const walls = [
       [[1, 0, 0], [[hx, -hy], [hx, hy]]],
       [[-1, 0, 0], [[-hx, hy], [-hx, -hy]]],
       [[0, 1, 0], [[hx, hy], [-hx, hy]]],
       [[0, -1, 0], [[-hx, -hy], [hx, -hy]]],
     ];
+    const depthGradient = (quad, alphaTop, alphaBottom) => {
+      const top = Math.min(...quad.map((p) => p.y));
+      const bottom = Math.max(...quad.map((p) => p.y));
+      const g = ctx.createLinearGradient(0, top, 0, bottom);
+      g.addColorStop(0, rgba(mix(water, [255, 255, 255], 0.15), alphaTop));
+      g.addColorStop(0.35, rgba(water, (alphaTop + alphaBottom) / 2));
+      g.addColorStop(1, rgba(deep, alphaBottom));
+      return g;
+    };
+
+    // The far walls and the seabed: the deep colour, seen through the sea.
+    R.polygon([P(-hx, -hy, -D), P(hx, -hy, -D), P(hx, hy, -D), P(-hx, hy, -D)], rgba(deep, 0.95), null);
     for (const [n, [[ax, ay], [bx, by]]] of walls) {
       if (C.faces(...n)) continue;
-      R.polygon([P(ax, ay, -D), P(bx, by, -D), P(bx, by, 0), P(ax, ay, 0)], shade(water, 0.5, 0.5), null);
+      const quad = [P(ax, ay, -D), P(bx, by, -D), P(bx, by, 0), P(ax, ay, 0)];
+      R.polygon(quad, depthGradient(quad, 0.55, 0.95), null);
     }
 
-    // Under the water, then the water itself, then what floats above.
+    // Under the water, then the near walls of the sea over it, the surface,
+    // the waterlines, and what floats above.
     for (const b of order) this.drawPart(b, geo.get(b), 'below', water);
     ctx.globalAlpha = 1;
-    // Near walls: clear at the surface, deepening toward the seabed.
     for (const [n, [[ax, ay], [bx, by]]] of walls) {
       if (!C.faces(...n)) continue;
       const quad = [P(ax, ay, -D), P(bx, by, -D), P(bx, by, 0), P(ax, ay, 0)];
-      const top = Math.min(quad[2].y, quad[3].y);
-      const bottom = Math.max(quad[0].y, quad[1].y);
-      const grad = ctx.createLinearGradient(0, top, 0, bottom);
-      grad.addColorStop(0, shade(water, 1.2, 0.12));
-      grad.addColorStop(1, shade(water, 0.55, 0.55));
-      R.polygon(quad, grad, shade(water, 1.3, 0.6), 1);
+      R.polygon(quad, depthGradient(quad, 0.08, 0.62), null);
+      // Light streaks just under the surface.
+      ctx.save();
+      ctx.beginPath();
+      quad.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+      ctx.closePath();
+      ctx.clip();
+      for (let k = 0; k < 7; k++) {
+        const f = (k + 0.5) / 7;
+        const x = ax + (bx - ax) * f;
+        const y = ay + (by - ay) * f;
+        const top = P(x, y, 0);
+        const low = P(x + 0.35, y, -D * (0.35 + 0.25 * ((k * 0.618) % 1)));
+        const g = ctx.createLinearGradient(top.x, top.y, low.x, low.y);
+        g.addColorStop(0, 'rgba(255,255,255,0.16)');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.strokeStyle = g;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(top.x, top.y);
+        ctx.lineTo(low.x, low.y);
+        ctx.stroke();
+      }
+      ctx.restore();
+      // The near rim of the surface.
+      R.line(P(ax, ay, 0), P(bx, by, 0), 'rgba(190,240,255,0.9)', 1.5);
     }
-    R.polygon([P(-hx, -hy, 0), P(hx, -hy, 0), P(hx, hy, 0), P(-hx, hy, 0)], shade(water, 1.15, 0.22), shade(water, 1.5, 0.85), 1.25);
-    // Foam where each berg meets the water.
+    R.polygon([P(-hx, -hy, 0), P(hx, -hy, 0), P(hx, hy, 0), P(-hx, hy, 0)], rgba(mix(water, [255, 255, 255], 0.2), 0.28), 'rgba(190,240,255,0.6)', 1);
+    // A glowing line where each berg meets the water.
     for (const b of order) {
       const g = geo.get(b);
       const ring = g.list[g.water].map((p) => P(...p));
-      R.polygon(ring, null, theme.mode === 'dark' ? 'rgba(235,248,255,0.85)' : 'rgba(255,255,255,0.95)', 2);
+      R.polygon(ring, null, 'rgba(160,230,255,0.35)', 6);
+      R.polygon(ring, null, 'rgba(245,252,255,0.95)', 1.5);
     }
     for (const b of order) this.drawPart(b, geo.get(b), 'above', water);
     ctx.globalAlpha = 1;
@@ -221,12 +258,14 @@ export class IsoIcebergChart extends Chart {
     const ctx = R.ctx;
     const { list, water: w } = geo;
     const [from, to] = part === 'below' ? [0, w] : [w, list.length - 1];
-    const ice = parseHex(this.options.iceColor ?? '#dff3ff');
+    const ice = parseHex(this.options.iceColor ?? '#e8f7ff');
+    const deep = this.deepRgb();
+    const bottom = list[0][0][2];
     const dim = this.hovered && this.hovered !== b ? 1 - 0.5 * this.focus.value : 1;
     const glow = this.hovered === b ? 1 + 0.1 * this.focus.value : 1;
     const [cx, cy] = this.center(b);
     const hits = [];
-    ctx.globalAlpha = dim * (part === 'below' ? 0.92 : 1);
+    ctx.globalAlpha = dim * (part === 'below' ? 0.85 : 1);
     for (let i = from; i < to; i++) {
       const lo = list[i];
       const hi = list[i + 1];
@@ -238,9 +277,15 @@ export class IsoIcebergChart extends Chart {
         const n = outward(a, c, d, [cx, cy, (a[2] + d[2]) / 2]);
         if (!C.faces(...n)) continue;
         let rgb = ice;
-        // Facets catch the light unevenly, like ice.
-        const k = faceBrightness(C, theme, n, glow) * b.shape.tone[i][v];
-        if (part === 'below') rgb = ice.map((x, j) => x + (water[j] - x) * 0.35);
+        // Facets catch the light unevenly, like ice; shaded faces turn blue.
+        const lit = faceBrightness(C, theme, n, glow) * b.shape.tone[i][v];
+        const k = Math.min(1.25, 0.55 + lit * 0.6);
+        rgb = mix(ice, [120, 185, 225], Math.max(0, 1 - lit) * 0.9);
+        if (part === 'below') {
+          // Under water the ice takes the sea's colour, more with depth.
+          const depth = Math.min(1, ((a[2] + d[2]) / 2 / (bottom || -1)));
+          rgb = mix(mix(rgb, water, 0.45), deep, 0.55 * depth);
+        }
         const fill = shade(rgb, k);
         const poly = [a, c, d, e].map((p) => C.project(...p));
         R.polygon(poly, fill, fill, 0.6);
@@ -251,7 +296,7 @@ export class IsoIcebergChart extends Chart {
       const peak = list[list.length - 1];
       const cap = peak.map((p) => C.project(...p));
       if (C.faces(0, 0, 1)) {
-        const fill = shade(ice, faceBrightness(C, theme, [0, 0, 1], glow) * 1.05);
+        const fill = shade(ice, Math.min(1.2, faceBrightness(C, theme, [0, 0, 1], glow) * 1.08));
         R.polygon(cap, fill, fill, 0.6);
         hits.push(cap);
       }
@@ -275,13 +320,14 @@ export class IsoIcebergChart extends Chart {
       const name = String(b.key);
       const w = R.measure(name, 12, 600) / 2 + 3;
       if (claim(placed, { l: peak.x - w, r: peak.x + w, t: peak.y - 34, b: peak.y - 4 }) || b === this.hovered) {
-        R.text(name, peak.x, peak.y - 24, { color: ink, size: 12, weight: 600, halo });
-        R.text(this.format(up), peak.x, peak.y - 10, { color: ink, size: 11, mono: true, halo });
+        R.text(name, peak.x, peak.y - 24, { color: theme.text, size: 12, weight: 600 });
+        R.text(this.format(up), peak.x, peak.y - 10, { color: theme.textMuted, size: 11, mono: true });
       }
       // Under the tip: the hidden amount and share.
       const tip = C.project(cx, cy, -Math.max(0.05, b.down));
       const share = up + down ? Math.round((down / (up + down)) * 100) : 0;
-      R.text(`${this.format(down)} · ${share}% hidden`, tip.x, tip.y + 12, { color: ink, size: 11, mono: true, halo });
+      R.text(`${share}%`, tip.x, tip.y + 16, { color: '#ffffff', size: 15, weight: 600 });
+      R.text(`${this.format(down)} hidden`, tip.x, tip.y + 32, { color: 'rgba(220,240,255,0.85)', size: 11, mono: true });
       void g;
     }
     R.ctx.globalAlpha = 1;
@@ -310,8 +356,11 @@ function shapeFor(key) {
   const rings = BELOW.length + ABOVE.length;
   const angles = Array.from({ length: SIDES }, (_, v) => ((v + (rnd() - 0.5) * 0.5) / SIDES) * Math.PI * 2);
   const jitter = Array.from({ length: rings }, () => Array.from({ length: SIDES }, () => 0.82 + rnd() * 0.32));
-  const tone = Array.from({ length: rings }, () => Array.from({ length: SIDES }, () => 0.9 + rnd() * 0.18));
-  return { angles, jitter, tone };
+  const tone = Array.from({ length: rings }, () => Array.from({ length: SIDES }, () => 0.86 + rnd() * 0.26));
+  // A little twist between rings, so facets read as fractured ice rather
+  // than a turned column. The waterline ring is shared, so it's untwisted.
+  const twist = Array.from({ length: rings }, (_, j) => (j === BELOW.length - 1 ? 0 : (rnd() - 0.5) * 0.35));
+  return { angles, jitter, tone, twist };
 }
 
 // Normal of a quad (a, c, d), flipped to point away from the axis point.
@@ -324,3 +373,6 @@ function outward(a, c, d, center) {
   const out = [(a[0] + d[0]) / 2 - center[0], (a[1] + d[1]) / 2 - center[1], 0];
   return n[0] * out[0] + n[1] * out[1] < 0 ? n.map((x) => -x) : n;
 }
+
+const mix = (a, b, t) => a.map((c, i) => c + (b[i] - c) * t);
+const rgba = (rgb, a) => `rgba(${rgb.map(Math.round).join(',')},${a})`;
