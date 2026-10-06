@@ -70,6 +70,26 @@ test('camera fitTarget keeps the points inside the padded viewport', () => {
   }
 });
 
+test('camera fitTarget leaves each point its pixel margins', () => {
+  const c = new Camera();
+  const m = { l: 120, r: 0, t: 10, b: 30 };
+  const pts = [[-5, -3, 0, m], [5, -3, 0], [5, 3, 0, m], [-5, 3, 0], [0, 0, 4]];
+  Object.assign(c, c.fitTarget(800, 500, pts, { top: 0, right: 0, bottom: 0, left: 0 }));
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const [x, y, z, mm = { l: 0, r: 0, t: 0, b: 0 }] of pts) {
+    const p = c.project(x, y, z);
+    minX = Math.min(minX, p.x - mm.l);
+    maxX = Math.max(maxX, p.x + mm.r);
+    minY = Math.min(minY, p.y - mm.t);
+    maxY = Math.max(maxY, p.y + mm.b);
+  }
+  assert.ok(minX >= -1e-6 && maxX <= 800 + 1e-6 && minY >= -1e-6 && maxY <= 500 + 1e-6);
+  // Tight on at least one axis, and centred on both.
+  assert.ok(Math.abs(maxX - minX - 800) < 1e-6 || Math.abs(maxY - minY - 500) < 1e-6);
+  close(minX, 800 - maxX);
+  close(minY, 500 - maxY);
+});
+
 test('tween waits for its delay, eases, and lands exactly on target', () => {
   const t = new Tween(0);
   t.to(10, 1000, { duration: 100, delay: 50, easing: ease.linear });

@@ -103,7 +103,8 @@ export class IsoRegionMap extends GeoChart {
     // which features to draw at all.
     const idOf = o.regionId ?? ((f, i) => f.id ?? f.properties?.id ?? f.properties?.name ?? i);
     const nameOf = o.regionName ?? ((f, id) => f.properties?.name ?? f.properties?.NAME ?? id);
-    const features = this._features().filter((f, i) => {
+    const all = this._features();
+    const features = all.filter((f, i) => {
       if (!f.geometry || exclude.has(String(idOf(f, i)))) return false;
       if (o.filter && !o.filter(f)) return false;
       if (!bounds) return true;
@@ -130,7 +131,15 @@ export class IsoRegionMap extends GeoChart {
     this.regions = new Map();
     this.aliases = new Map();
     this.unmatched = new Set();
+    // Keys of regions that exist but aren't drawn (excluded, filtered out or
+    // cropped away by bounds): data for them is dropped without a warning.
+    this.hidden = new Set();
     const joinOn = o.joinOn ?? JOIN_ON;
+    const keysOf = (f, id) => [id, ...joinOn.map((k) => f.properties?.[k]).filter((v) => v != null && v !== '')];
+    const drawn = new Set(features);
+    all.forEach((f, i) => {
+      if (!drawn.has(f)) for (const k of keysOf(f, String(idOf(f, i)))) this.hidden.add(String(k).toLowerCase());
+    });
     features.forEach((f, index) => {
       const id = String(idOf(f, index));
       const polys = polygonsOf(f.geometry)
@@ -143,7 +152,10 @@ export class IsoRegionMap extends GeoChart {
             .filter(Boolean),
         )
         .filter((rings) => rings.length && !rings[0].hole);
-      if (!polys.length) return;
+      if (!polys.length) {
+        for (const k of keysOf(f, id)) this.hidden.add(String(k).toLowerCase());
+        return;
+      }
 
       // Anchor at the centroid of the largest outer ring, so overseas
       // territories don't drag a label into the ocean.
@@ -254,7 +266,7 @@ export class IsoRegionMap extends GeoChart {
     }
     const k = this.key(d);
     const id = this.resolve(k);
-    if (id == null && k != null && !this.unmatched.has(k)) {
+    if (id == null && k != null && !this.unmatched.has(k) && !this.hidden.has(String(k).toLowerCase())) {
       this.unmatched.add(k);
       if (this.unmatched.size === 1) {
         queueMicrotask(() =>

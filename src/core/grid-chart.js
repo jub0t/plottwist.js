@@ -249,9 +249,9 @@ export class GridChart extends Chart {
 
   draw() {
     const { renderer: R, theme } = this;
-    // Category labels hang off the floor edges, so reserve their width.
-    const side = 16 + this.labelWidth();
-    this.fitScene(this.sceneBounds(), { top: 64, right: side, bottom: 24, left: side });
+    // Room at the top for the series legend; labels reserve their own.
+    const top = this.stack ? 48 : 12;
+    this.fitScene(this.sceneBounds(), { top, right: 12, bottom: 12, left: 12 });
     this.drawFloor();
     this.drawWalls();
     this.drawLabels();
@@ -263,34 +263,73 @@ export class GridChart extends Chart {
     if (this.hovered && (this.timeline.playing || this.focus.value < 1)) this._updateTooltip();
   }
 
-  // World points the camera fits to: floor corners (with room for labels)
-  // and the ceiling of the tallest possible mark.
+  // World points the camera fits to: floor corners, the ceiling of the
+  // tallest possible mark, and the anchor of every label with the pixel room
+  // it needs, so the scene fills the canvas from any camera angle.
   sceneBounds() {
+    const { camera: C, renderer: R, theme } = this;
     const [hx, hy] = this.floorExtent();
-    const lx = hx + 0.5;
-    const ly = hy + 0.5;
+    const floorZ = -theme.floorThickness;
     const top = this.maxHeight + 0.2;
+    const corners = [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]];
+    const valueRoom = this.options.labels ? 24 : 4;
     const pts = [];
-    for (const [x, y] of [[-lx, -ly], [lx, -ly], [lx, ly], [-lx, ly]]) pts.push([x, y, -0.4]);
-    for (const [x, y] of [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]]) pts.push([x, y, top]);
-    return pts;
-  }
+    for (const [x, y] of corners) {
+      pts.push([x, y, floorZ, { b: 4 }]);
+      pts.push([x, y, top, { t: valueRoom }]);
+    }
 
-  // Widest category label in pixels (cached per data set), plus the swatch.
-  labelWidth() {
-    if (this._labelWidthFor === this.frames) return this._labelWidth;
-    const R = this.renderer;
-    let w = 0;
-    this.xs.forEach((v, i) => {
-      const label = this.tickLabel('x', v, i);
-      if (label != null) w = Math.max(w, R.measure(label, 12, 600));
+    // Category labels, as drawLabels() places them (bold width, so hovering
+    // doesn't nudge the fit).
+    const c = C.project(0, 0, 0);
+    const alignFor = (ox, oy) => {
+      const o = C.project(ox, oy, 0);
+      const dir = (o.x - c.x) / (Math.hypot(o.x - c.x, o.y - c.y) || 1);
+      return dir < -0.3 ? 'right' : dir > 0.3 ? 'left' : 'center';
+    };
+    const around = (align, w) =>
+      align === 'right' ? { l: w + 3, r: 3, t: 4, b: 12 } : align === 'left' ? { l: 3, r: w + 3, t: 4, b: 12 } : { l: w / 2 + 3, r: w / 2 + 3, t: 4, b: 12 };
+    const ey = C.groundDepth(0, hy + 0.3) > C.groundDepth(0, -hy - 0.3) ? hy + 0.3 : -hy - 0.3;
+    const ex = C.groundDepth(hx + 0.3, 0) > C.groundDepth(-hx - 0.3, 0) ? hx + 0.3 : -hx - 0.3;
+    const xAlign = alignFor(0, Math.sign(ey));
+    this.xs.forEach((xv, i) => {
+      const label = this.tickLabel('x', xv, i);
+      if (label == null) return;
+      const gx = (i - (this.xs.length - 1) / 2) * this.spacing[0];
+      pts.push([gx, ey, floorZ, around(xAlign, R.measure(label, 12, 600))]);
     });
-    this.ys.forEach((v, j) => {
-      const label = this.tickLabel('y', v, j);
-      if (label != null) w = Math.max(w, R.measure(label, 12, 600) + (this.colorByRow ? 12 : 0));
-    });
-    this._labelWidthFor = this.frames;
-    return (this._labelWidth = w);
+    if (!(this.ys.length === 1 && this.ys[0] === '')) {
+      const yAlign = alignFor(Math.sign(ex), 0);
+      this.ys.forEach((yv, j) => {
+        const label = this.tickLabel('y', yv, j);
+        if (label == null) return;
+        const gy = (j - (this.ys.length - 1) / 2) * this.spacing[1];
+        pts.push([ex, gy, floorZ, around(yAlign, R.measure(label, 12, 600) + (this.colorByRow ? 12 : 0))]);
+      });
+    }
+
+    // Value axis labels on the wall edge drawWalls() picks.
+    if (this.axis.show && this.wallFade > 0) {
+      const yFar = C.groundDepth(0, hy) < C.groundDepth(0, -hy) ? hy : -hy;
+      const xFar = C.groundDepth(hx, 0) < C.groundDepth(-hx, 0) ? hx : -hx;
+      const useA = C.project(-xFar, yFar, 0).x < C.project(xFar, -yFar, 0).x;
+      const ax = useA ? -xFar : xFar;
+      const ay = useA ? yFar : -yFar;
+      for (const tick of this.ticks) {
+        pts.push([ax, ay, this.z(tick), { l: 10 + R.measure(this.format(tick), 11, 400, true), t: 8, b: 8 }]);
+      }
+      if (this.axis.title) {
+        pts.push([ax, ay, this.maxHeight, { l: 10 + R.measure(this.axis.title, 11, 600), t: 26 }]);
+      }
+    }
+
+    // A reference plane's label sits left of its leftmost corner.
+    const ref = this.reference;
+    if (ref) {
+      const w = R.measure(`${ref.label ? `${ref.label} ` : ''}${this.format(ref.value)}`, 11, 600, true);
+      for (const [x, y] of corners) pts.push([x, y, this.z(ref.value), { l: 10 + w, t: 8, b: 8 }]);
+    }
+    return pts;
   }
 
   drawMarks() {}

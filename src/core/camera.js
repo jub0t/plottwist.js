@@ -95,17 +95,45 @@ export class Camera {
   }
 
   // Scale and origin that fit `points` inside a width x height viewport.
+  // A point may carry pixel margins as a 4th element, { l, r, t, b }: room a
+  // label anchored there needs, which doesn't grow with the scene.
   fitTarget(width, height, points, pad = { top: 40, right: 40, bottom: 40, left: 40 }) {
-    const b = this.bounds(points);
+    const xs = [];
+    const ys = [];
+    for (const [x, y, z, m] of points) {
+      const u = x * this._cy - y * this._sy;
+      const v = x * this._sy + y * this._cy;
+      xs.push([u, m?.l ?? 0, m?.r ?? 0]);
+      ys.push([v * this._sp - z * this._cp, m?.t ?? 0, m?.b ?? 0]);
+    }
     const w = width - pad.left - pad.right;
     const h = height - pad.top - pad.bottom;
-    const scale = Math.max(1, Math.min(w / (b.maxX - b.minX || 1), h / (b.maxY - b.minY || 1)));
-    return {
-      scale,
-      cx: pad.left + w / 2 - (scale * (b.minX + b.maxX)) / 2,
-      cy: pad.top + h / 2 - (scale * (b.minY + b.maxY)) / 2,
-    };
+    const scale = Math.max(1, Math.min(maxScale(xs, w), maxScale(ys, h)));
+    return { scale, cx: pad.left + offset(xs, w, scale), cy: pad.top + offset(ys, h, scale) };
   }
+}
+
+// Largest scale at which every [coord, before, after] fits in `size` pixels:
+// for each pair i < j along the axis, s * (a_j - a_i) + before_i + after_j <= size.
+function maxScale(items, size) {
+  let s = Infinity;
+  for (const [ai, lo] of items) {
+    for (const [aj, , hi] of items) {
+      const span = aj - ai;
+      if (span > 1e-9) s = Math.min(s, (size - lo - hi) / span);
+    }
+  }
+  return Number.isFinite(s) ? s : size;
+}
+
+// Origin that centres the extent (marks plus margins) in `size` pixels.
+function offset(items, size, scale) {
+  let lo = Infinity, hi = -Infinity;
+  for (const [a, before, after] of items) {
+    lo = Math.min(lo, a * scale - before);
+    hi = Math.max(hi, a * scale + after);
+  }
+  return (size - (hi - lo)) / 2 - lo;
 }
 
 function normalize(v) {
