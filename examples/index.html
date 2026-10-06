@@ -195,6 +195,15 @@
       </section>
 
       <section>
+        <h2>Galton board</h2>
+        <p>600 commute times, sample data. Each person is a ball that bounces through the pegs into their bin of minutes, so the histogram builds as you watch; colour is how they travel.</p>
+        <div class="card">
+          <div class="stage"><div class="year" id="galton-year"></div><div class="chart" id="galton"></div></div>
+          <div class="controls" id="galton-controls"></div>
+        </div>
+      </section>
+
+      <section>
         <h2>Terrain surface</h2>
         <p>Wi-Fi signal quality across a 36 × 24 m office floor through the day, sample data. Contour lines follow the value axis; hover to probe a point.</p>
         <div class="card">
@@ -529,6 +538,19 @@ chart.setTheme('brand');</pre>
           chart.invalidate();
         });
         host.append(spin, button('Shuffle', shuffle));
+      }
+
+      {
+        const { chart, shuffle } = create('galton');
+        const host = $('galton-controls');
+        player(chart, host, $('galton-year'));
+        host.append(
+          button('Shuffle', () => {
+            shuffle();
+            chart.seek(0);
+            chart.play();
+          }),
+        );
       }
 
       {

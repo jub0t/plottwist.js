@@ -5,7 +5,7 @@
 // { chart, shuffle } where shuffle() swaps in a fresh random dataset.
 
 import {
-  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart,
+  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart, IsoGaltonChart,
 } from '../src/index.js';
 import { worldCountries } from '../src/geo/countries.js';
 
@@ -304,6 +304,22 @@ function reservoirLevels(seed) {
   });
 }
 
+// ---- commute times (galton) ----------------------------------------------------------
+
+// Minutes to work for 600 people, by mode: bikes cluster short, trains
+// tight around their timetable, cars spread wide with a long tail.
+function commutes(seed) {
+  const r = rng(seed);
+  const gauss = () => Math.sqrt(-2 * Math.log(r() + 1e-9)) * Math.cos(2 * Math.PI * r());
+  const modes = [['Bike', 0.3, 18, 5], ['Train', 0.35, 38, 6], ['Car', 0.35, 31, 11]];
+  return Array.from({ length: 600 }, () => {
+    let u = r();
+    const [mode, , mean, sd] = modes.find(([, share]) => (u -= share) < 0) ?? modes[2];
+    const tail = mode === 'Car' && r() < 0.15 ? 18 * r() : 0;
+    return { mode, minutes: Math.max(4, Math.min(74, mean + gauss() * sd + tail)) };
+  });
+}
+
 // ---- demos ------------------------------------------------------------------------
 
 // Builds a demo: `make(seed)` produces data, `build(el, data, extra)` the chart.
@@ -443,6 +459,23 @@ export const demos = {
         targetLabel: 'Safe minimum',
         format: (v) => `${v.toFixed(0)} GL`,
         ariaLabel: 'Six reservoirs as glass tanks through a dry year, with safe minimum levels',
+        ...extra,
+      }),
+    ),
+  },
+  galton: {
+    title: 'Galton board',
+    type: 'IsoGaltonChart',
+    create: demo(14, 7741, commutes, (el, data, extra) =>
+      new IsoGaltonChart(el, {
+        data,
+        value: 'minutes',
+        color: 'mode',
+        bins: 15,
+        domain: [0, 75],
+        format: (v) => `${Math.round(v)}`,
+        countLabel: 'People',
+        ariaLabel: 'Galton board: 600 commute times fall into a histogram of minutes, coloured by mode',
         ...extra,
       }),
     ),

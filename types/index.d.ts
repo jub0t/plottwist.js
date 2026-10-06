@@ -499,6 +499,57 @@ export declare class IsoTankChart<D = any> extends Chart<Tank> {
   setFrames(frames: Frame<D>[]): void;
 }
 
+// ---- galton board ------------------------------------------------------------------
+
+export interface GaltonBin {
+  readonly kind: 'bin';
+  /** 0-based bin index. */
+  readonly bin: number;
+}
+
+export interface IsoGaltonChartOptions<D> extends ChartOptions {
+  data?: D[];
+  value?: Accessor<D, number>;
+  /** Colour balls by this category. */
+  color?: Accessor<D, string | number>;
+  colors?: string[] | Record<string, string> | ((key: string | number, index: number) => string | undefined);
+  /** Ball colour without `color`. */
+  ballColor?: string;
+  /** Number of bins, 3-31. Default 15. */
+  bins?: number;
+  /** Value range of the bins. Default: the data's min and max. */
+  domain?: [number, number];
+  /** At most this many balls; beyond it each ball stands for several records. Default 600. */
+  maxBalls?: number;
+  /** Balls abreast in each bin. Default 4. */
+  perBin?: number;
+  /** Height of the tallest stack, world units. Default 4.5. */
+  stackHeight?: number;
+  ballSize?: number;
+  /** ms between balls. Default: the whole pour takes about 7 seconds. */
+  interval?: number;
+  /** ms from release to landing. Default 1700. */
+  fall?: number;
+  /** Draw a smoothed outline over the stacks. Default true. */
+  curve?: boolean;
+  /** Pour on creation. Default true. */
+  autoplay?: boolean;
+  format?: (value: number) => string;
+  countLabel?: string;
+}
+
+/** A histogram that builds itself: each record is a ball dropped through pegs into its bin. */
+export declare class IsoGaltonChart<D = any> extends Chart<GaltonBin> {
+  constructor(container: HTMLElement | string, options?: IsoGaltonChartOptions<D>);
+  readonly options: IsoGaltonChartOptions<D>;
+  /** "landed / total". */
+  readonly frameLabel: string;
+  /** Records per bin. */
+  readonly counts: number[];
+  readonly domain: [number, number];
+  setData(data: D[]): void;
+}
+
 // ---- maps ---------------------------------------------------------------------
 
 export type LonLat = [lon: number, lat: number];

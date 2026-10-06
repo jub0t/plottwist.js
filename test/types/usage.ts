@@ -1,6 +1,6 @@
 // Compile-only check that the public types describe real usage.
 // Run with: npm run test:types
-import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
+import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart, IsoGaltonChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
 import { worldCountries } from 'plottwist/geo/countries';
 
 interface Row {
@@ -116,3 +116,7 @@ export { coil };
 const reservoirs = new IsoTankChart<{ name: string; gl: number; cap: number }>('#t', { data: [], value: 'gl', capacity: 'cap', target: 80, alertColor: false });
 reservoirs.on('hover', (t) => t?.level);
 export { reservoirs };
+
+const board = new IsoGaltonChart<{ minutes: number; mode: string }>('#g', { data: [], value: 'minutes', color: 'mode', bins: 12, domain: [0, 60] });
+board.on('hover', (b) => (b ? board.counts[b.bin] : 0));
+export { board };
