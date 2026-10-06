@@ -177,15 +177,6 @@
       </section>
 
       <section>
-        <h2>Flow factory</h2>
-        <p>An online store's funnel, thousands of visitors a month, sample data. Items keep their channel's colour; machine roofs show the mix; grey bins catch who drops off.</p>
-        <div class="card">
-          <div class="stage"><div class="year" id="flow-year"></div><div class="chart" id="flow"></div></div>
-          <div class="controls" id="flow-controls"></div>
-        </div>
-      </section>
-
-      <section>
         <h2>Seasonal helix</h2>
         <p>Weekly rides on a city bike share, 2021–2025, sample data. One turn per year: every June sits above the last, and the summer bulge widens as the scheme grows. Play draws it week by week; hover compares with the year before.</p>
         <div class="card">
@@ -519,7 +510,7 @@ chart.setTheme('brand');</pre>
         window.regions = chart;
       }
 
-      for (const id of ['race', 'waffle', 'flow', 'tanks', 'bars', 'stack']) {
+      for (const id of ['race', 'waffle', 'tanks', 'bars', 'stack']) {
         const { chart, shuffle } = create(id);
         const host = $(`${id}-controls`);
         player(chart, host, $(`${id}-year`));

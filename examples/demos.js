@@ -5,7 +5,7 @@
 // { chart, shuffle } where shuffle() swaps in a fresh random dataset.
 
 import {
-  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoFlowChart, IsoHelixChart, IsoTankChart,
+  IsoBarChart, IsoHeatmap, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoRibbonChart, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart,
 } from '../src/index.js';
 import { worldCountries } from '../src/geo/countries.js';
 
@@ -260,37 +260,6 @@ function officeSignal(seed) {
   });
 }
 
-// ---- store funnel (flow factory) ---------------------------------------------------
-
-// Visitors by channel through an online store, thousands per month. Ads and
-// social land on a promo page that loses many; search and email go straight
-// to products and convert better.
-function storeFunnel(seed) {
-  const r = rng(seed);
-  return ['Jan', 'Feb', 'Mar', 'Apr'].map((label, t) => {
-    const j = () => 0.9 + r() * 0.2;
-    const ads = 60 * (1 + t * 0.25) * j();
-    const social = 44 * (1 + t * 0.12) * j();
-    const search = 52 * j();
-    const email = 18 * (1 + t * 0.2) * j();
-    const promoIn = ads + social;
-    const promo = promoIn * 0.42 * j();
-    const product = promo + search * 0.8 + email * 0.9;
-    const cart = product * 0.38 * j();
-    const checkout = cart * 0.62 * j();
-    const buy = checkout * 0.78 * j();
-    return {
-      label,
-      data: [
-        ['Ads', 'Promo page', ads], ['Social', 'Promo page', social],
-        ['Search', 'Product', search * 0.8], ['Email', 'Product', email * 0.9],
-        ['Promo page', 'Product', promo], ['Product', 'Cart', cart],
-        ['Cart', 'Checkout', checkout], ['Checkout', 'Purchased', buy],
-      ].map(([from, to, k]) => ({ from, to, visitors: k })),
-    };
-  });
-}
-
 // ---- bike share (helix) ------------------------------------------------------------
 
 // Weekly rides on a city bike share, 2021-2025: a summer peak, steady growth,
@@ -440,23 +409,6 @@ export const demos = {
         format: (v) => `${v.toFixed(0)}%`,
         frameDuration: 2000,
         ariaLabel: 'Surface of Wi-Fi signal quality across an office floor at four times of day',
-        ...extra,
-      }),
-    ),
-  },
-  flow: {
-    title: 'Flow factory',
-    type: 'IsoFlowChart',
-    create: demo(6, 4421, storeFunnel, (el, frames, extra) =>
-      new IsoFlowChart(el, {
-        frames,
-        source: 'from',
-        target: 'to',
-        value: 'visitors',
-        valueLabel: 'Visitors',
-        format: (v) => `${v.toFixed(0)}k`,
-        colors: { Ads: '#ec4899', Social: '#8b5cf6', Search: '#3b82f6', Email: '#d97706' },
-        ariaLabel: 'Store funnel as a factory floor: visitors ride conveyor belts from channels to purchase',
         ...extra,
       }),
     ),

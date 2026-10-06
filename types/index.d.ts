@@ -408,64 +408,6 @@ export declare class IsoWaffleChart<D = any> extends Chart<WaffleCategory> {
   setFrames(frames: Frame<D>[]): void;
 }
 
-// ---- flow factory -------------------------------------------------------------------
-
-export interface FlowNode {
-  readonly kind: 'node';
-  readonly id: string | number;
-  /** Current (interpolated) totals. */
-  readonly inflow: number;
-  readonly outflow: number;
-  /** What this stage loses: inflow - outflow, for stages with both. */
-  readonly loss: number;
-  /** Share of each source in this stage's throughput, in source order. */
-  readonly mix: number[];
-}
-
-export interface FlowLink {
-  readonly kind: 'link';
-  readonly source: FlowNode;
-  readonly target: FlowNode;
-  readonly value: number;
-}
-
-export interface FlowLoss {
-  readonly kind: 'loss';
-  readonly node: FlowNode;
-}
-
-export interface IsoFlowChartOptions<D> extends ChartOptions {
-  /** Link records. */
-  data?: D[];
-  frames?: Frame<D>[];
-  source?: Accessor<D, string | number>;
-  target?: Accessor<D, string | number>;
-  value?: Accessor<D, number>;
-  /** Colours of the source stages (items keep their source's colour). */
-  colors?: string[] | Record<string, string> | ((key: string | number, index: number) => string | undefined);
-  /** Belt speed in world units per second. Default 1.5. */
-  speed?: number;
-  /** Items per second on the busiest belt. Default 2.6. */
-  rate?: number;
-  /** Set false to stop the belts. Default true. */
-  flow?: boolean;
-  columnGap?: number;
-  rowGap?: number;
-  format?: (value: number) => string;
-  valueLabel?: string;
-}
-
-/** A pipeline as a factory floor: belts carry items between stages, losses drop into bins. */
-export declare class IsoFlowChart<D = any> extends Chart<FlowNode | FlowLink | FlowLoss> {
-  constructor(container: HTMLElement | string, options?: IsoFlowChartOptions<D>);
-  readonly options: IsoFlowChartOptions<D>;
-  readonly frameLabel: string | number | null;
-  readonly nodes: FlowNode[];
-  readonly links: FlowLink[];
-  setData(data: D[]): void;
-  setFrames(frames: Frame<D>[]): void;
-}
-
 // ---- seasonal helix ----------------------------------------------------------------
 
 export interface HelixPoint<D = any> {

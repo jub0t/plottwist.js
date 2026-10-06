@@ -1,6 +1,6 @@
 // Compile-only check that the public types describe real usage.
 // Run with: npm run test:types
-import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoSurface, IsoWaffleChart, IsoFlowChart, IsoHelixChart, IsoTankChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
+import { IsoBarChart, IsoHexMap, IsoRaceChart, IsoRegionMap, IsoSurface, IsoWaffleChart, IsoHelixChart, IsoTankChart, registerTheme, scales, topojsonFeatures, type Frame, type TopoJSONTopology } from 'plottwist';
 import { worldCountries } from 'plottwist/geo/countries';
 
 interface Row {
@@ -104,10 +104,6 @@ const terrain = new IsoSurface<{ x: number; y: number; q: number }>('#s', { data
 // @ts-expect-error contours must be a count, list or false
 new IsoSurface('#s', { contours: 'many' });
 export { terrain };
-
-const funnel = new IsoFlowChart<{ from: string; to: string; n: number }>('#f', { data: [], source: 'from', target: 'to', value: 'n' });
-funnel.on('hover', (h) => (h?.kind === 'link' ? h.source.id : h?.kind === 'node' ? h.loss : null));
-export { funnel };
 
 terrain.reconfigure({ water: { value: 30, label: 'Sea' }, smooth: 3, bands: true, style: 'wireframe', float: 1, peaks: 2 });
 

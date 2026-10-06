@@ -4,7 +4,6 @@ export { IsoSurface } from './charts/IsoSurface.js';
 export { IsoRibbonChart } from './charts/IsoRibbonChart.js';
 export { IsoRaceChart } from './charts/IsoRaceChart.js';
 export { IsoWaffleChart } from './charts/IsoWaffleChart.js';
-export { IsoFlowChart } from './charts/IsoFlowChart.js';
 export { IsoHelixChart } from './charts/IsoHelixChart.js';
 export { IsoTankChart } from './charts/IsoTankChart.js';
 export { IsoHexMap } from './charts/IsoHexMap.js';
