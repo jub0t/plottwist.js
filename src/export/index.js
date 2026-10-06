@@ -9,10 +9,11 @@
 import { muxMp4 } from './mp4.js';
 import { muxWebm } from './webm.js';
 import { GifEncoder } from './gif.js';
+import { WebpEncoder } from './webp.js';
 import { Tween } from '../core/animation.js';
 
 const TAU = Math.PI * 2;
-const MIME = { mp4: 'video/mp4', webm: 'video/webm', gif: 'image/gif', png: 'image/png' };
+const MIME = { mp4: 'video/mp4', webm: 'video/webm', gif: 'image/gif', png: 'image/png', webp: 'image/webp' };
 
 export async function exportChart(chart, options = {}) {
   const format = options.format ?? 'mp4';
@@ -23,6 +24,7 @@ export async function exportChart(chart, options = {}) {
   try {
     if (format === 'png') return await session.still();
     if (format === 'gif') return await session.gif();
+    if (format === 'webp') return await session.webp();
     if (typeof VideoEncoder === 'function') {
       const blob = await session.webCodecs(format);
       if (blob) return blob;
@@ -57,9 +59,10 @@ class Session {
     const themeBg = chart.theme.background;
     const fallback = chart.theme.mode === 'light' ? '#ffffff' : '#0b0a14';
     this.background =
-      o.background ?? (themeBg && themeBg !== 'transparent' ? themeBg : format === 'png' ? null : fallback);
+      o.background ?? (themeBg && themeBg !== 'transparent' ? themeBg : format === 'png' || format === 'webp' ? null : fallback);
 
-    this.fps = o.fps ?? (format === 'gif' ? 20 : 30);
+    this.fps = o.fps ?? (format === 'gif' || format === 'webp' ? 20 : 30);
+    this.quality = o.quality;
     const T = chart.timeline;
     const from = Math.max(0, Math.min(o.from ?? 0, Math.max(0, T.length - 1)));
     this.from = from;
@@ -96,7 +99,7 @@ class Session {
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.pixelWidth;
     this.canvas.height = this.pixelHeight;
-    this.ctx = this.canvas.getContext('2d', { willReadFrequently: format === 'gif' });
+    this.ctx = this.canvas.getContext('2d', { willReadFrequently: format === 'gif' || format === 'webp' });
 
     this.t = performance.now();
     chart._clock = this.t;
@@ -168,6 +171,19 @@ class Session {
       if (i % 4 === 3) await idle(); // keep the page responsive
     }
     return new Blob([enc.finish()], { type: MIME.gif });
+  }
+
+  // Animated WebP keeps the alpha channel: transparent unless a background
+  // is given.
+  async webp() {
+    this.warmUp();
+    const { pixelWidth: w, pixelHeight: h } = this;
+    const enc = new WebpEncoder(w, h, { quality: this.quality ?? 0.9 });
+    for (let i = 0; i < this.frameCount; i++) {
+      const canvas = await this.render(i);
+      await enc.addFrame(canvas, this.ctx.getImageData(0, 0, w, h).data, 1000 / this.fps);
+    }
+    return new Blob([enc.finish()], { type: MIME.webp });
   }
 
   // Returns null when no suitable codec is available, so the caller can fall

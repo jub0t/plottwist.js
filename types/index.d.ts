@@ -134,11 +134,18 @@ export declare class Chart<H = unknown> {
 }
 
 export interface ExportOptions {
-  /** Default 'mp4' (H.264). 'webm' is VP9. 'png' is a single transparent frame. */
-  format?: 'mp4' | 'webm' | 'gif' | 'png';
+  /**
+   * Default 'mp4' (H.264). 'webm' is VP9. 'webp' is an animated WebP with a
+   * full alpha channel (transparent unless `background` is set; needs a
+   * browser that encodes WebP, e.g. Chrome, Edge, Firefox). 'png' is a single
+   * transparent frame.
+   */
+  format?: 'mp4' | 'webm' | 'gif' | 'webp' | 'png';
+  /** Image quality for 'webp', 0..1. Default 0.9. */
+  quality?: number;
   /** Clip length in ms. Default: one pass through the frames (plus a 1s hold when not looping), else 3s (6s with orbit). */
   duration?: number;
-  /** Frames per second. Default 30 (20 for GIF). */
+  /** Frames per second. Default 30 (20 for GIF and WebP). */
   fps?: number;
   /** Output size in CSS pixels. Default: the chart's current size. Height follows the aspect ratio if omitted. */
   width?: number;

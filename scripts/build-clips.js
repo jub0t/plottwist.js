@@ -1,6 +1,6 @@
 // Renders the README clips with headless Chrome (see examples/clips.html):
-//   docs/race.gif        the bar chart race
-//   docs/drilldown.gif   region map: world -> United States -> California
+//   docs/race.webp        the bar chart race (transparent animated WebP)
+//   docs/drilldown.webp   region map: world -> United States -> California
 //
 //   npm run clips            all clips
 //   npm run clips -- race    just these

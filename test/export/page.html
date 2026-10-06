@@ -23,12 +23,20 @@
 
       // Decode the exported file with the browser's own decoders.
       async function inspect(blob) {
-        if (blob.type === 'image/gif' || blob.type === 'image/png') {
+        if (blob.type.startsWith('image/')) {
           const dec = new ImageDecoder({ data: blob.stream(), type: blob.type });
           await dec.tracks.ready;
           await dec.completed;
-          const { image } = await dec.decode({ frameIndex: 0 });
-          const out = { frames: dec.tracks.selectedTrack.frameCount, width: image.displayWidth, height: image.displayHeight };
+          const frames = dec.tracks.selectedTrack.frameCount;
+          const { image } = await dec.decode({ frameIndex: frames - 1 });
+          // Share of fully transparent pixels in the last frame.
+          const c = new OffscreenCanvas(image.displayWidth, image.displayHeight);
+          const ctx = c.getContext('2d');
+          ctx.drawImage(image, 0, 0);
+          const px = ctx.getImageData(0, 0, c.width, c.height).data;
+          let clear = 0;
+          for (let i = 3; i < px.length; i += 4) if (px[i] === 0) clear++;
+          const out = { frames, width: image.displayWidth, height: image.displayHeight, transparent: clear / (px.length / 4) };
           image.close();
           return out;
         }

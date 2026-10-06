@@ -15,6 +15,7 @@ const CASES = [
   { name: 'race webm', demo: 'race', options: { format: 'webm', duration: 2000, width: 480 }, expect: { codec: 'vp9', width: 480, height: 300, duration: 2 } },
   { name: 'map orbit mp4', demo: 'map', options: { format: 'mp4', duration: 1500, orbit: 0.25, pixelRatio: 1 }, expect: { codec: 'h264', width: 640, height: 400, duration: 1.5 } },
   { name: 'bars gif', demo: 'bars', options: { format: 'gif', duration: 1500, fps: 10, pixelRatio: 1 }, expect: { frames: 15, width: 640, height: 400 } },
+  { name: 'waffle webp', demo: 'waffle', options: { format: 'webp', duration: 1500, fps: 10, pixelRatio: 1 }, expect: { frames: null, width: 640, height: 400, alpha: true } },
   { name: 'regions png', demo: 'regions', options: { format: 'png' }, expect: { frames: 1, width: 1280, height: 800 } },
 ];
 
@@ -45,7 +46,8 @@ try {
     }
     const { info, expect: x } = { info: r.info, expect: c.expect };
     if (info.width !== x.width || info.height !== x.height) problems.push(`size ${info.width}x${info.height}, expected ${x.width}x${x.height}`);
-    if (x.frames !== undefined && info.frames !== x.frames) problems.push(`${info.frames} frames, expected ${x.frames}`);
+    if (x.frames != null && info.frames !== x.frames) problems.push(`${info.frames} frames, expected ${x.frames}`);
+    if (x.alpha && !(info.transparent > 0.2)) problems.push(`expected a transparent background, ${info.transparent} of pixels clear`);
     if (x.duration !== undefined && !near(info.duration, x.duration, 0.1)) problems.push(`browser duration ${info.duration}s`);
     if (info.lit !== undefined && info.lit < 0.01) problems.push('mid-clip frame is blank');
 

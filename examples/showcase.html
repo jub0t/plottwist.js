@@ -17,33 +17,11 @@
   <body>
     <script type="module">
       import { registerTheme } from '../src/index.js';
-      import { demos } from './demos.js';
+      import { demos, previewTheme } from './demos.js';
 
-      // The preview is a transparent PNG shown on GitHub's light and dark
-      // backgrounds, so: no additive glow (it turns into solid blobs with
-      // nothing behind it) and mid-grey page text that reads on both.
-      const INK = '#7c7b95';
-      // Surfaces are very light tints of the midnight base purple (#8b5cf6),
-      // so the charts read as light objects on either page colour.
-      registerTheme('preview', {
-        extends: 'midnight',
-        mode: 'light', // sequential scales run pale -> deep
-        glow: 0,
-        pool: 0,
-        text: INK,
-        textMuted: INK,
-        floor: '#f1edfe',
-        wall: 'rgba(241, 237, 254, 0.92)',
-        grid: '#d8cefb',
-        land: '#dcd2fc',
-        highlight: '#e2d8fd',
-        surface: '#ffffff',
-        tooltip: 'rgba(255, 255, 255, 0.96)',
-        tooltipBorder: '#d8cefb',
-        // Labels on marks now sit on light surfaces: dark ink, white halo.
-        markText: '#2b2156',
-        markHalo: 'rgba(255, 255, 255, 0.9)',
-      });
+      // The README's transparent look (see previewTheme in demos.js).
+      registerTheme('preview', previewTheme);
+      const INK = previewTheme.text;
 
       // Per-chart tweaks for the preview.
       const previewOptions = {

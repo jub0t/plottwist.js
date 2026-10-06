@@ -9,6 +9,31 @@ import {
 } from '../src/index.js';
 import { worldCountries } from '../src/geo/countries.js';
 
+// The README's look: transparent media shown on GitHub's light and dark
+// backgrounds, so no additive glow (it turns into solid blobs with nothing
+// behind it), mid-grey page text that reads on both, and surfaces in very
+// light tints of the midnight base purple (#8b5cf6).
+const INK = '#7c7b95';
+export const previewTheme = {
+  extends: 'midnight',
+  mode: 'light', // sequential scales run pale -> deep
+  glow: 0,
+  pool: 0,
+  text: INK,
+  textMuted: INK,
+  floor: '#f1edfe',
+  wall: 'rgba(241, 237, 254, 0.92)',
+  grid: '#d8cefb',
+  land: '#dcd2fc',
+  highlight: '#e2d8fd',
+  surface: '#ffffff',
+  tooltip: 'rgba(255, 255, 255, 0.96)',
+  tooltipBorder: '#d8cefb',
+  // Labels on marks sit on light surfaces: dark ink, white halo.
+  markText: '#2b2156',
+  markHalo: 'rgba(255, 255, 255, 0.9)',
+};
+
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

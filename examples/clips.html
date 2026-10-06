@@ -9,13 +9,17 @@
     />
     <style>
       /* Renders the README clips; scripts/build-clips.js calls window.clip(). */
-      body { margin: 0; background: #0b0a14; }
+      body { margin: 0; background: transparent; }
       .stage { position: absolute; left: 0; top: 0; }
     </style>
   </head>
   <body>
     <script type="module">
-      import { demos } from './demos.js';
+      import { registerTheme } from '../src/index.js';
+      import { demos, previewTheme } from './demos.js';
+
+      // Same transparent look as the README image.
+      registerTheme('preview', previewTheme);
 
       // us-atlas (ISC), only for the drill-down clip.
       const US_ATLAS = 'https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json';
@@ -27,13 +31,13 @@
           demo: 'race',
           size: [640, 400],
           chart: { loop: false },
-          export: { format: 'gif', fps: 15 },
+          export: { format: 'webp', fps: 12, quality: 0.8 },
         },
         // World -> United States -> California, scripted on the clip clock.
         drilldown: {
           demo: 'regions',
           size: [640, 400],
-          chart: { arcs: null },
+          chart: { borderColor: '#ffffff' },
           prepare: async (chart) => {
             const us = await (await fetch(US_ATLAS)).json();
             chart.seek(chart.frames.length - 1);
@@ -48,7 +52,7 @@
             });
             return { us, states, stores };
           },
-          export: { format: 'gif', fps: 15, duration: 9000, play: false },
+          export: { format: 'webp', fps: 12, quality: 0.8, duration: 9000, play: false },
           script: ({ us, states, stores }) => ({ time, chart }) => {
             if (time >= 2200 && chart.depth === 0) {
               chart.drill(us, { object: 'states', bounds: [-125, 24, -66.5, 49.6], key: 'state', data: states, labels: 5, format: (v) => `$${v.toFixed(1)}M` });
@@ -84,7 +88,7 @@
         const el = Object.assign(document.createElement('div'), { className: 'stage' });
         Object.assign(el.style, { width: `${spec.size[0]}px`, height: `${spec.size[1]}px` });
         document.body.append(el);
-        const { chart } = demos[spec.demo].create(el, spec.chart);
+        const { chart } = demos[spec.demo].create(el, { theme: 'preview', ...spec.chart });
         try {
           const ctx = (await spec.prepare?.(chart)) ?? {};
           const blob = await chart.export({ ...spec.export, onFrame: spec.script?.(ctx), pixelRatio: 1 });

@@ -5,8 +5,8 @@ Isometric, animated, interactive charts for the web. Zero runtime dependencies, 
 <img alt="plottwist charts: a hex world map, an extruded region map, 3D bars over time, stacked city blocks, ribbon lines and a calendar heatmap" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/showcase.png" />
 
 <p>
-  <img width="49%" alt="A 3D bar chart race of app users from 2010 to 2025" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/race.gif" />
-  <img width="49%" alt="A region map drilling from the world into US states, then California counties" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/drilldown.gif" />
+  <img width="49%" alt="A 3D bar chart race of app users from 2010 to 2025" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/race.webp" />
+  <img width="49%" alt="A region map drilling from the world into US states, then California counties" src="https://raw.githubusercontent.com/jub0t/plottwist.js/main/docs/drilldown.webp" />
 </p>
 
 ```js
@@ -109,6 +109,7 @@ converts TopoJSON for other uses.
 ```js
 const mp4 = await chart.export({ format: 'mp4' });            // one pass through the frames
 const gif = await chart.export({ format: 'gif', width: 640 }); // smaller, loops anywhere
+const webp = await chart.export({ format: 'webp' });          // animated, transparent background
 const spin = await map.export({ format: 'webm', orbit: 1, duration: 8000 });
 const png = await chart.export({ format: 'png' });            // transparent still
 ```
@@ -118,7 +119,7 @@ is made this way, see `examples/clips.html`):
 
 ```js
 await map.export({
-  format: 'gif',
+  format: 'webp',
   duration: 9000,
   onFrame: ({ time, chart }) => {
     if (time >= 2200 && chart.depth === 0) chart.drill(usStates, { key: 'state', data: stateData });
@@ -149,7 +150,7 @@ npm run test:visual          # pixel comparison with test/visual/baseline (-- --
 npm run test:export          # export every format and check it decodes (uses ffprobe if installed)
 npm run build                # dist/ bundles
 npm run showcase             # re-render the README image (docs/showcase.png)
-npm run clips                # re-render the README clips (docs/*.gif)
+npm run clips                # re-render the README clips (docs/*.webp, transparent)
 node scripts/build-land.js   # regenerate src/geo/land.js from Natural Earth
 node scripts/build-countries.js  # regenerate src/geo/countries-data.js
 ```
